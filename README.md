@@ -1,2 +1,4 @@
-# -
-알림창에 고정 시켜두는 메모장 앱 (오픈소스소프트웨어 팀 프로젝트_2025)
+# feature/memo-storage
+
+메모 저장/불러오기 기능
+앱 꺼도 메모 유지, SharedPreferences 적용
