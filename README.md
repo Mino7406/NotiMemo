@@ -1,2 +1,5 @@
-# -
-알림창에 고정 시켜두는 메모장 앱 (오픈소스소프트웨어 팀 프로젝트_2025)
+# feature/foreground-service
+
+알림 지속 유지용 서비스
+
+- 앱 꺼져도 알림이 유지되도록 Foreground Service 적용 예정
