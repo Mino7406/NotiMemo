@@ -1,5 +1,5 @@
-# develop
+# feature/foreground-service
 
-통합 개발 브랜치
+알림 지속 유지용 서비스
 
-- 기능 브랜치들을 머지하는 중간 단계. 전체 앱 기능이 누적되는 곳.
+- 앱 꺼져도 알림이 유지되도록 Foreground Service(앱이 꺼지거나 백그라운드로 가도 계속 살아있는 서비스) 적용
