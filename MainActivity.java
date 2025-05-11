@@ -18,6 +18,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 
+//메모 입력 및 Foreground Service 시작
 public class MainActivity extends AppCompatActivity {
 
     private static final String CHANNEL_ID = "notimemo_channel";
@@ -61,6 +62,11 @@ public class MainActivity extends AppCompatActivity {
                 SharedPreferences.Editor editor = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit();
                 editor.putString(MEMO_KEY, memo);
                 editor.apply();
+
+                // Foreground Service 시작
+                Intent serviceIntent = new Intent(MainActivity.this, NotiMemoService.class);
+                serviceIntent.putExtra("memo", memo);
+                ContextCompat.startForegroundService(MainActivity.this, serviceIntent);
 
                 // 알림 띄우기
                 showNotification(memo);

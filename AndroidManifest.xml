@@ -12,6 +12,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.NotiMemo"
         tools:targetApi="31">
+
+        <!-- 앱의 MainActivity 등록 -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -21,6 +23,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 앱이 백그라운드일 때도 알림이 유지되도록 서비스 정의 -->
+        <service
+            android:name=".NotiMemoService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
     </application>
 
     <!-- Android 13 이상에서 알림 사용을 위한 권한 -->
