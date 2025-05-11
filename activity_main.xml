@@ -1,28 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp"
-    android:gravity="center"
-    android:background="#FAF9FB">
+    android:background="#FAF9FB"
+    tools:context=".MainActivity">
 
-    <EditText
-        android:id="@+id/memo_input"
+    <!-- 기존 LinearLayout 내용 -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="메모를 입력하세요"
-        android:textSize="16sp"
-        android:padding="12dp"
-        android:background="@android:drawable/edit_text"
-        android:layout_marginBottom="24dp" />
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:gravity="center">
 
+        <EditText
+            android:id="@+id/memo_input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="메모를 입력하세요"
+            android:textSize="16sp"
+            android:padding="12dp"
+            android:background="@android:drawable/edit_text"
+            android:layout_marginBottom="24dp" />
+
+        <Button
+            android:id="@+id/notify_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="알림에 고정하기"
+            android:backgroundTint="@android:color/black"
+            android:textColor="@android:color/white"
+            android:padding="12dp"/>
+    </LinearLayout>
+
+    <!-- 우측 하단 원형 버튼들 -->
+    <!-- '기록' 버튼 (아래쪽) -->
     <Button
-        android:id="@+id/notify_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="알림에 고정하기"
-        android:backgroundTint="@android:color/black"
-        android:textColor="@android:color/white"
-        android:padding="12dp"/>
-</LinearLayout>
+        android:id="@+id/button_record"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/circle_button_background"
+        android:text="기록"
+        android:textColor="@android:color/black"
+        android:textSize="10sp"
+        android:gravity="center"
+        android:elevation="4dp" /> <!-- 그림자 효과 (API 21+) -->
+
+    <!-- '야간' 버튼 (위쪽) -->
+    <Button
+        android:id="@+id/button_night_mode"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_above="@id/button_record"
+        android:layout_alignEnd="@id/button_record"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/circle_button_background"
+        android:text="야간"
+        android:textColor="@android:color/black"
+        android:textSize="10sp"
+        android:gravity="center"
+        android:elevation="4dp" /> <!-- 그림자 효과 (API 21+) -->
+
+</RelativeLayout>
