@@ -41,7 +41,7 @@ public class NotiMemoService extends Service {
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("NotiMemo")
                 .setContentText(memo != null ? memo : "메모 없음")
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setSmallIcon(R.drawable.ic_notify_white)
                 .setOngoing(true)
                 .build();
 
