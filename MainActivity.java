@@ -108,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             notificationManager.notify(1, builder.build());
 
-            // 사용자에게 고정 안내 토스트 출력
+            // 고정 안내 토스트 출력
             Toast toast = Toast.makeText(getApplicationContext(), "메모 고정.", Toast.LENGTH_SHORT);
             View toastView = toast.getView();
             if (toastView != null) {
