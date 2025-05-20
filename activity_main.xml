@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center"
+    android:background="#FAF9FB">
+
+
+    <EditText
+        android:id="@+id/memo_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="메모를 입력하세요"
+        android:textSize="16sp"
+        android:padding="12dp"
+        android:background="@android:drawable/edit_text"
+        android:layout_marginBottom="24dp" />
+
+
+
+    <Button
+        android:id="@+id/notify_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="알림에 고정하기"
+        android:backgroundTint="@android:color/black"
+        android:textColor="@android:color/white"
+        android:padding="12dp"/>
+
+    <Button
+        android:id="@+id/btn_view_memo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="알림 내역" />
+
+</LinearLayout>
