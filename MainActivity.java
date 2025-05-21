@@ -91,25 +91,38 @@ public class MainActivity extends AppCompatActivity {
             // 알림 채널 생성 및 고정 알림 생성
             createNotificationChannel();
 
-            // 알림 클릭 시 다시 앱으로 돌아오는 설정
+            // 알림 클릭 시 앱으로 돌아가기
             Intent intent = new Intent(this, MainActivity.class);
             PendingIntent pendingIntent = PendingIntent.getActivity(
                     this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+
+            // 지우기 버튼용 인텐트
+            Intent cancelIntent = new Intent(this, CancelNotificationReceiver.class);
+            cancelIntent.setAction("ACTION_CANCEL_NOTIFICATION");
+            PendingIntent cancelPendingIntent = PendingIntent.getBroadcast(
+                    this, 1, cancelIntent, PendingIntent.FLAG_IMMUTABLE);
+
+            // 알림 클릭 시 앱으로 돌아오는 설정
+            Intent openIntent = new Intent(this, MainActivity.class);
+            PendingIntent openPendingIntent = PendingIntent.getActivity(
+                    this, 0, openIntent, PendingIntent.FLAG_IMMUTABLE);
 
             // 알림 빌더 설정
             NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_notify_white)
                     .setContentTitle("고정된 메모")
                     .setContentText(memo)
-                    .setContentIntent(pendingIntent)
+                    .setContentIntent(openPendingIntent) // 클릭 시 앱 복귀
                     .setOngoing(true)
-                    .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+                    .setAutoCancel(false)
+                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                    .addAction(android.R.drawable.ic_menu_close_clear_cancel, "지우기", cancelPendingIntent);
 
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             notificationManager.notify(1, builder.build());
 
             // 고정 안내 토스트 출력
-            Toast toast = Toast.makeText(getApplicationContext(), "메모 고정.", Toast.LENGTH_SHORT);
+            Toast toast = Toast.makeText(getApplicationContext(), "알림 고정.", Toast.LENGTH_SHORT);
             View toastView = toast.getView();
             if (toastView != null) {
                 toastView.setBackground(ContextCompat.getDrawable(this, R.drawable.toast_background));
