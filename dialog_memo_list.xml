@@ -5,11 +5,13 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
+    <!-- 메모 목록 -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"
         android:layout_width="match_parent"
         android:layout_height="300dp" />
 
+    <!-- 내역 전체 삭제 버튼 -->
     <Button
         android:id="@+id/btn_reset"
         android:layout_width="match_parent"
