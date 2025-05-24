@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal"
+    android:padding="10dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical">
+
+    <!-- 메모 내용 표시 -->
+    <TextView
+        android:id="@+id/text_memo"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:text="•   메모내용"
+        android:textSize="16sp"
+        android:layout_height="wrap_content" />
+
+    <!-- 삭제 버튼 -->
+    <ImageButton
+        android:id="@+id/btn_delete"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/ic_delete"
+        android:contentDescription="삭제"
+        android:background="?attr/selectableItemBackgroundBorderless" />
+</LinearLayout>
