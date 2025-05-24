@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#dbdbdb" >
+
+
+    <!-- FAQ 상단 배너 -->
+    <TextView
+        android:id="@+id/header_title"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:background="#393D44"
+        android:text="FAQ"
+        android:textColor="@android:color/white"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        android:paddingStart="15dp"
+        android:paddingTop="48dp"
+        android:gravity="top|start" />
+
+    <!-- FAQ 1 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="16dp"
+        android:text="Q: 어떻게 사용 하나요?"
+        android:textColor="#555"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:paddingStart="10dp"
+        android:paddingTop="100dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="16dp"
+        android:text="• 원하는 메모를 '메모를 작성하세요.' 상자에 작성 후\n'알림 생성하기' 버튼을 누르면 본 기기 알림창에 나타납니다.  "
+        android:textColor="#555"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:paddingStart="15dp"
+        android:paddingTop="125dp"
+        />
+
+    <!-- FAQ 2 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="16dp"
+        android:text="Q: 알림은 얼마나 유지되나요?"
+        android:textColor="#555"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:paddingStart="10dp"
+        android:paddingTop="170dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="16dp"
+        android:text="• 사용자가 지우기 버튼을 누르기 전까지 유지됩니다.\n(지우기 버튼은 알림 상세 창에 표시됩니다.)"
+        android:textColor="#555"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:paddingStart="15dp"
+        android:paddingTop="195dp"
+        />
+
+    <!-- FAQ 3 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="16dp"
+        android:text="Q: 알림메모 사용 목적이 무엇입니까?"
+        android:textColor="#555"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:paddingStart="10dp"
+        android:paddingTop="240dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="16dp"
+        android:text="• 바로 해야 할 일 등 간단한 일을 잊지 않기 위해 항시 휴대폰 알림창에\n 고정 시켜 둠으로써 일의 효율성을 높이기 위해 개발되었습니다. "
+        android:textColor="#555"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:paddingStart="15dp"
+        android:paddingTop="265dp"
+        />
+
+    <!-- FAQ 4 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="16dp"
+        android:text="Q: 글자 수 제한이 있나요?"
+        android:textColor="#555"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:paddingStart="10dp"
+        android:paddingTop="310dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="16dp"
+        android:text="• 글자 수 제한은 없으나 사용자 환경 및 디스플레이 비율에 따라\n최대 글자 수 표기에 차이가 있을 수 있습니다.\n(권장 글자 수는 65자 이하 입니다.)"
+        android:textColor="#555"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:paddingStart="15dp"
+        android:paddingTop="335dp"
+        />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+
+
+
