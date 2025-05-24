@@ -18,4 +18,5 @@
         android:layout_height="wrap_content"
         android:text="내역 전체 삭제"
         android:layout_marginTop="16dp" />
+    
 </LinearLayout>
