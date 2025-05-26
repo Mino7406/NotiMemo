@@ -137,7 +137,7 @@ public class MainActivity extends AppCompatActivity {
             notificationManager.notify(1, builder.build());
 
             // 고정 안내 토스트 출력
-            Toast toast = Toast.makeText(getApplicationContext(), "알림 고정.", Toast.LENGTH_SHORT);
+            Toast toast = Toast.makeText(getApplicationContext(), "알림 생성.", Toast.LENGTH_SHORT);
             View toastView = toast.getView();
             if (toastView != null) {
                 toastView.setBackground(ContextCompat.getDrawable(this, R.drawable.toast_background));
