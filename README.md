@@ -38,9 +38,9 @@ NotiMemo는 사용자가 작성한 메모를 알림창에 고정시켜 항상 �
 ## 기술 스택
 
 - Android Studio Meerkat (Java)
-- Android NotificationManager
-- SharedPreferences 기반 데이터 저장
-- Material 3 UI 구성
+- Android NotificationManager (안드로이드 알림 제어 서비스)
+- SharedPreferences 기반 데이터 저장 
+- Material 3 UI 구성 (구글 UI 디자인 가이드라인)
 
 ---
 
