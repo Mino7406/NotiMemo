@@ -49,6 +49,7 @@ NotiMemo는 사용자가 작성한 메모를 알림창에 고정시켜 항상 �
 [@Mino7406](https://github.com/Mino7406)
 
 [@VVYUNS](https://github.com/VVYUNS)
+
 ---
 
 ## 라이선스
