@@ -217,19 +217,20 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: Center(
-                child: Text(
-                  'made by Mino7406',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: subColor.withAlpha(128),
-                    letterSpacing: 0.3,
+            if (MediaQuery.of(context).viewInsets.bottom == 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: Center(
+                  child: Text(
+                    'made by Mino7406',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: subColor.withAlpha(128),
+                      letterSpacing: 0.3,
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
           ),
