@@ -14,7 +14,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   final _controller = TextEditingController();
-  List<String> _memoList = [];
+  List<MemoEntry> _memoList = [];
   int _charCount = 0;
   bool _isPinning = false;
   bool _hasActiveNotification = false;
@@ -106,7 +106,10 @@ class _HomeScreenState extends State<HomeScreen>
       await NotificationService.show(memo);
       await MemoStorage.setCurrent(memo);
       await MemoStorage.setNotificationActive(true);
-      final updated = [memo, ..._memoList];
+      final updated = [
+        MemoEntry(memo: memo, time: DateTime.now().millisecondsSinceEpoch),
+        ..._memoList,
+      ];
       await MemoStorage.saveList(updated);
       setState(() {
         _memoList = updated;
@@ -152,7 +155,7 @@ class _HomeScreenState extends State<HomeScreen>
       builder: (_) => _HistorySheet(
         memoList: _memoList,
         onDelete: (i) async {
-          final updated = List<String>.from(_memoList)..removeAt(i);
+          final updated = List<MemoEntry>.from(_memoList)..removeAt(i);
           await MemoStorage.saveList(updated);
           setState(() => _memoList = updated);
         },
@@ -661,7 +664,7 @@ class _CancelButtonState extends State<_CancelButton> {
 // ── History Bottom Sheet ───────────────────────────────────────────────────────
 
 class _HistorySheet extends StatefulWidget {
-  final List<String> memoList;
+  final List<MemoEntry> memoList;
   final Future<void> Function(int) onDelete;
   final Future<void> Function() onClearAll;
 
@@ -676,7 +679,7 @@ class _HistorySheet extends StatefulWidget {
 }
 
 class _HistorySheetState extends State<_HistorySheet> {
-  late List<String> _list;
+  late List<MemoEntry> _list;
 
   @override
   void initState() {
@@ -816,13 +819,28 @@ class _HistorySheetState extends State<_HistorySheet> {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Text(
-                          _list[i],
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: textColor,
-                            height: 1.45,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _list[i].memo,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: textColor,
+                                height: 1.45,
+                              ),
+                            ),
+                            if (_list[i].time != 0) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                _formatEntryTime(_list[i].time),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: subColor.withAlpha(160),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                       IconButton(
@@ -846,4 +864,21 @@ class _HistorySheetState extends State<_HistorySheet> {
       ),
     );
   }
+}
+
+String _formatEntryTime(int ms) {
+  final dt = DateTime.fromMillisecondsSinceEpoch(ms);
+  final now = DateTime.now();
+  final h = dt.hour;
+  final ampm = h < 12 ? '오전' : '오후';
+  final h12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+  final m = dt.minute.toString().padLeft(2, '0');
+  final timeStr = '$ampm $h12:$m';
+  if (dt.year == now.year && dt.month == now.month && dt.day == now.day) {
+    return timeStr;
+  }
+  if (dt.year == now.year) {
+    return '${dt.month}/${dt.day} $timeStr';
+  }
+  return '${dt.year}/${dt.month}/${dt.day} $timeStr';
 }
