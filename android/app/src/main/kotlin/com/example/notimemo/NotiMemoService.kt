@@ -69,7 +69,7 @@ class NotiMemoService : Service() {
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notify_white)
-            .setContentText("《 $memo 》")
+            .setContentText(memo)
             .setOngoing(true)
             .setSilent(true)
             .setShowWhen(false)
