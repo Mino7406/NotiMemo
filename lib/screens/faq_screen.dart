@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import '../theme/app_theme.dart';
 
 class FaqScreen extends StatelessWidget {
@@ -20,6 +21,10 @@ class FaqScreen extends StatelessWidget {
     (
       q: '글자 수 제한이 있나요?',
       a: '엄격한 제한은 없지만, 가독성을 위해 65자 이하를 권장합니다.',
+    ),
+    (
+      q: '개발자에게 문의사항이 있어요.',
+      a: 'rlaalsgh7406@gmail.com 으로 보내주세요!',
     ),
   ];
 
@@ -203,14 +208,16 @@ class _FaqItemState extends State<_FaqItem>
                   child: _expanded
                       ? Padding(
                           padding: const EdgeInsets.fromLTRB(40, 10, 4, 2),
-                          child: Text(
-                            widget.faq.a,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: subColor,
-                              height: 1.65,
-                            ),
-                          ),
+                          child: widget.faq.a.contains('@')
+                              ? _EmailAnswer(answer: widget.faq.a, subColor: subColor)
+                              : Text(
+                                  widget.faq.a,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: subColor,
+                                    height: 1.65,
+                                  ),
+                                ),
                         )
                       : const SizedBox.shrink(),
                 ),
@@ -219,6 +226,58 @@ class _FaqItemState extends State<_FaqItem>
           ),
         ),
       ),
+    );
+  }
+}
+
+class _EmailAnswer extends StatelessWidget {
+  final String answer;
+  final Color subColor;
+  const _EmailAnswer({required this.answer, required this.subColor});
+
+  @override
+  Widget build(BuildContext context) {
+    final match = RegExp(r'[\w.+-]+@[\w.-]+\.\w+').firstMatch(answer);
+    final email = match?.group(0) ?? answer;
+    final rest = answer.replaceFirst(email, '');
+
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        GestureDetector(
+          onTap: () {
+            Clipboard.setData(ClipboardData(text: email));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('이메일 주소가 복사되었습니다.'),
+                backgroundColor: AppColors.success,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                duration: const Duration(seconds: 2),
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              ),
+            );
+          },
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                email,
+                style: TextStyle(fontSize: 14, color: subColor, height: 1.65),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.copy_rounded, size: 13, color: subColor.withAlpha(140)),
+            ],
+          ),
+        ),
+        if (rest.isNotEmpty)
+          Text(
+            rest,
+            style: TextStyle(fontSize: 14, color: subColor, height: 1.65),
+          ),
+      ],
     );
   }
 }
