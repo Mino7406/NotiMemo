@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class MemoStorage {
   static const _keyList = 'memo_list';
   static const _keyCurrent = 'saved_memo';
+  static const _keyActive = 'notification_active';
 
   static Future<List<String>> getList() async {
     final prefs = await SharedPreferences.getInstance();
@@ -30,5 +31,19 @@ class MemoStorage {
   static Future<void> clearCurrent() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyCurrent);
+  }
+
+  static Future<bool> isNotificationActive() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyActive) ?? false;
+  }
+
+  static Future<void> setNotificationActive(bool active) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (active) {
+      await prefs.setBool(_keyActive, true);
+    } else {
+      await prefs.remove(_keyActive);
+    }
   }
 }

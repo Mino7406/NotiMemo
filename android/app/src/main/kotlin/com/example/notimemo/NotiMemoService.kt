@@ -27,7 +27,10 @@ class NotiMemoService : Service() {
             ACTION_STOP -> {
                 clearSavedMemo()
                 getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                    .edit().remove("flutter.saved_memo").apply()
+                    .edit()
+                    .remove("flutter.saved_memo")
+                    .remove("flutter.notification_active")
+                    .apply()
                 ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return START_NOT_STICKY

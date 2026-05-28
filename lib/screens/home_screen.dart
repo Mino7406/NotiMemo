@@ -42,20 +42,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _syncNotificationState() async {
-    final current = await MemoStorage.getCurrent();
-    if (mounted) setState(() => _hasActiveNotification = current != null);
+    final isActive = await MemoStorage.isNotificationActive();
+    if (mounted) setState(() => _hasActiveNotification = isActive);
   }
 
   Future<void> _load() async {
     final current = await MemoStorage.getCurrent();
     final list = await MemoStorage.getList();
+    final isActive = await MemoStorage.isNotificationActive();
     setState(() {
       if (current != null) {
         _controller.text = current;
         _charCount = current.length;
       }
       _memoList = list;
-      _hasActiveNotification = current != null;
+      _hasActiveNotification = isActive;
     });
   }
 
@@ -63,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (!_hasActiveNotification) return;
     await NotificationService.cancel();
     await MemoStorage.clearCurrent();
+    await MemoStorage.setNotificationActive(false);
     setState(() => _hasActiveNotification = false);
     _toast('알림이 해제되었습니다.');
   }
@@ -77,6 +79,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       await NotificationService.show(memo);
       await MemoStorage.setCurrent(memo);
+      await MemoStorage.setNotificationActive(true);
       final updated = [memo, ..._memoList];
       await MemoStorage.saveList(updated);
       setState(() {
@@ -406,19 +409,28 @@ class _PinButtonState extends State<_PinButton> {
       child: AnimatedScale(
         scale: _pressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 100),
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
           width: double.infinity,
           height: 56,
           decoration: BoxDecoration(
             gradient: AppColors.brandGradient,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.gradStart.withAlpha(90),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
+            boxShadow: _pressed
+                ? [
+                    BoxShadow(
+                      color: AppColors.gradStart.withAlpha(40),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: AppColors.gradStart.withAlpha(90),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
           ),
           child: widget.isPinning
               ? const Center(
@@ -453,7 +465,7 @@ class _PinButtonState extends State<_PinButton> {
   }
 }
 
-class _HistoryButton extends StatelessWidget {
+class _HistoryButton extends StatefulWidget {
   final int count;
   final bool isDark;
   final Color subColor;
@@ -467,54 +479,75 @@ class _HistoryButton extends StatelessWidget {
   });
 
   @override
+  State<_HistoryButton> createState() => _HistoryButtonState();
+}
+
+class _HistoryButtonState extends State<_HistoryButton> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        height: 52,
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark ? AppColors.borderDark : AppColors.borderLight,
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.history_rounded, size: 20, color: subColor),
-            const SizedBox(width: 8),
-            Text(
-              '알림 내역',
-              style: TextStyle(
-                color: subColor,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          width: double.infinity,
+          height: 52,
+          decoration: BoxDecoration(
+            color: _pressed
+                ? AppColors.gradStart.withAlpha(widget.isDark ? 30 : 20)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _pressed
+                  ? AppColors.gradStart.withAlpha(widget.isDark ? 100 : 80)
+                  : (widget.isDark ? AppColors.borderDark : AppColors.borderLight),
+              width: 1.5,
             ),
-            if (count > 0) ...[
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.history_rounded, size: 20, color: widget.subColor),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.elevatedDark
-                      : const Color(0xFFEEF2FF),
-                  borderRadius: BorderRadius.circular(20),
+              Text(
+                '알림 내역',
+                style: TextStyle(
+                  color: widget.subColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
                 ),
-                child: Text(
-                  '$count',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.gradStart,
+              ),
+              if (widget.count > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: widget.isDark
+                        ? AppColors.elevatedDark
+                        : const Color(0xFFEEF2FF),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${widget.count}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.gradStart,
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -651,7 +684,7 @@ class _HistorySheetState extends State<_HistorySheet> {
             child: Row(
               children: [
                 Text(
-                  '저장된 메모',
+                  '알림 내역',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,

@@ -15,8 +15,8 @@ class AppColors {
   static const borderDark = Color(0xFF252638);
 
   // Brand gradient
-  static const gradStart = Color(0xFF667EEA);
-  static const gradEnd = Color(0xFF9B5DE5);
+  static const gradStart = Color(0xFF526AE4);
+  static const gradEnd = Color(0xFFA459E7);
 
   // Status
   static const danger = Color(0xFFEF4444);
