@@ -18,4 +18,12 @@ class NotificationService {
     final status = await Permission.notification.request();
     return status.isGranted;
   }
+
+  // Returns: 'granted', 'denied', 'permanentlyDenied'
+  static Future<String> checkPermission() async {
+    final status = await Permission.notification.status;
+    if (status.isGranted) return 'granted';
+    if (status.isPermanentlyDenied) return 'permanentlyDenied';
+    return 'denied';
+  }
 }

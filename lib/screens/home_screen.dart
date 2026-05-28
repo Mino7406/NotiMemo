@@ -11,12 +11,24 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen>
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   final _controller = TextEditingController();
   List<String> _memoList = [];
   int _charCount = 0;
   bool _isPinning = false;
   bool _hasActiveNotification = false;
+
+  late final AnimationController _animCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  );
+  late final Animation<double> _fadeAnim =
+      CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+  late final Animation<Offset> _slideAnim = Tween<Offset>(
+    begin: const Offset(0, 0.04),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut));
 
   @override
   void initState() {
@@ -27,10 +39,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _controller.addListener(() {
       setState(() => _charCount = _controller.text.length);
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _animCtrl.forward());
   }
 
   @override
   void dispose() {
+    _animCtrl.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
@@ -74,6 +88,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (memo.isEmpty) {
       _toast('메모를 입력해주세요.', isError: true);
       return;
+    }
+    final permStatus = await NotificationService.checkPermission();
+    if (permStatus == 'permanentlyDenied') {
+      _toast('알림 권한이 차단되었습니다. 설정에서 허용해주세요.', isError: true);
+      return;
+    }
+    if (permStatus != 'granted') {
+      final granted = await NotificationService.requestPermission();
+      if (!granted) {
+        _toast('알림 권한이 필요합니다.', isError: true);
+        return;
+      }
     }
     setState(() => _isPinning = true);
     try {
@@ -146,7 +172,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
+        child: FadeTransition(
+          opacity: _fadeAnim,
+          child: SlideTransition(
+            position: _slideAnim,
+            child: Column(
           children: [
             _TopBar(subColor: subColor, textColor: textColor),
             Expanded(
@@ -201,6 +231,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
           ],
+        ),
+          ),
         ),
       ),
     );
