@@ -36,6 +36,9 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addObserver(this);
     _load();
     NotificationService.requestPermission();
+    NotificationService.listenForDismissal(() {
+      if (mounted) setState(() => _hasActiveNotification = false);
+    });
     _controller.addListener(() {
       setState(() => _charCount = _controller.text.length);
     });

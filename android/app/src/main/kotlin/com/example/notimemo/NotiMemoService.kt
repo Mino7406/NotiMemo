@@ -35,6 +35,9 @@ class NotiMemoService : Service() {
                     .remove("flutter.saved_memo")
                     .remove("flutter.notification_active")
                     .apply()
+                sendBroadcast(Intent("com.example.notimemo.DISMISSED").apply {
+                    setPackage(packageName)
+                })
                 ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return START_NOT_STICKY

@@ -6,6 +6,12 @@ class NotificationService {
 
   static Future<void> initialize() async {}
 
+  static void listenForDismissal(void Function() onDismissed) {
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'notificationDismissed') onDismissed();
+    });
+  }
+
   static Future<void> show(String memo) async {
     await _channel.invokeMethod('show', {'memo': memo});
   }
