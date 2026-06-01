@@ -408,11 +408,11 @@ class _InputCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Text(
-                  '$charCount / 65',
+                  '$charCount / 50',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: charCount > 65 ? AppColors.danger : subColor,
+                    color: charCount > 50 ? AppColors.danger : subColor,
                   ),
                 ),
               ],
