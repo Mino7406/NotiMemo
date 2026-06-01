@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/notification_service.dart';
+import '../services/update_service.dart';
 import '../storage/memo_storage.dart';
 import '../theme/app_theme.dart';
 import 'faq_screen.dart';
@@ -39,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen>
     NotificationService.listenForDismissal(() {
       if (mounted) setState(() => _hasActiveNotification = false);
     });
+    _checkUpdate();
     _controller.addListener(() {
       setState(() => _charCount = _controller.text.length);
     });
@@ -56,6 +59,90 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _syncNotificationState();
+  }
+
+  Future<void> _checkUpdate() async {
+    final newVersion = await UpdateService.checkForUpdate();
+    if (newVersion != null && mounted) _showUpdateDialog(newVersion);
+  }
+
+  void _showUpdateDialog(String version) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.brandGradient,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.system_update_rounded,
+                        color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '업데이트 알림',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'v$version 버전이 출시되었습니다.\n지금 업데이트하시겠어요?',
+                style: TextStyle(fontSize: 14, color: subColor, height: 1.6),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: TextButton.styleFrom(foregroundColor: subColor),
+                    child: const Text('나중에'),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      launchUrl(
+                        Uri.parse(UpdateService.releasesUrl),
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.gradStart,
+                    ),
+                    child: const Text(
+                      '업데이트',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _syncNotificationState() async {
