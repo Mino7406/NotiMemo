@@ -11,24 +11,29 @@ class UpdateService {
   /// Returns the latest version tag if newer than the current version, null otherwise.
   static Future<String?> checkForUpdate() async {
     try {
-      final info = await PackageInfo.fromPlatform();
-      final current = info.version;
+      return await _fetch().timeout(const Duration(seconds: 8));
+    } catch (_) {
+      return null;
+    }
+  }
 
-      final client = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 5);
+  static Future<String?> _fetch() async {
+    final info = await PackageInfo.fromPlatform();
+    final current = info.version;
+
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 5);
+    try {
       final request = await client.getUrl(Uri.parse(_apiUrl));
       request.headers.set('User-Agent', 'NotiMemo-App');
       final response = await request.close();
       if (response.statusCode != 200) return null;
       final body = await response.transform(utf8.decoder).join();
-      client.close();
-
       final json = jsonDecode(body) as Map<String, dynamic>;
       final tag = (json['tag_name'] as String).replaceFirst(RegExp(r'^v'), '');
-
       return _isNewer(tag, current) ? tag : null;
-    } catch (_) {
-      return null;
+    } finally {
+      client.close();
     }
   }
 
