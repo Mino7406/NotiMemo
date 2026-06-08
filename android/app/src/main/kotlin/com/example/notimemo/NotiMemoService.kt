@@ -60,6 +60,14 @@ class NotiMemoService : Service() {
     private fun showNotification(memo: String, createdAt: Long) {
         ensureChannel()
 
+        val openAppIntent = PendingIntent.getActivity(
+            this, 1,
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val stopIntent = PendingIntent.getService(
             this, 0,
             Intent(this, NotiMemoService::class.java).apply { action = ACTION_STOP },
@@ -82,6 +90,7 @@ class NotiMemoService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notify_white)
             .setContentTitle("알림메모")
+            .setContentIntent(openAppIntent)
             .setContentText(boldMemo)
             .setStyle(NotificationCompat.BigTextStyle().bigText(boldMemo))
             .setOngoing(true)

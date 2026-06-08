@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../services/update_service.dart';
 import '../theme/app_theme.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   final ThemeMode currentMode;
   final void Function(ThemeMode) onThemeChanged;
 
@@ -12,46 +15,247 @@ class SettingsScreen extends StatelessWidget {
   });
 
   @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  String _version = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) setState(() => _version = info.version);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : const Color(0xFF111827);
     final subColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
 
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+    return Scaffold(
+      body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '설정',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                color: textColor,
-                letterSpacing: -0.5,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 8, 20, 4),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: textColor,
+                      size: 20,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  Text(
+                    '설정',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 28),
-            Text(
-              '화면 테마',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: subColor,
-                letterSpacing: 0.6,
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SectionLabel(label: '테마', subColor: subColor),
+                    const SizedBox(height: 10),
+                    _ThemePicker(
+                      currentMode: widget.currentMode,
+                      onChanged: widget.onThemeChanged,
+                      isDark: isDark,
+                      textColor: textColor,
+                      subColor: subColor,
+                    ),
+                    const SizedBox(height: 24),
+                    _SectionLabel(label: '앱 정보', subColor: subColor),
+                    const SizedBox(height: 10),
+                    _AppInfoCard(
+                      isDark: isDark,
+                      textColor: textColor,
+                      subColor: subColor,
+                      version: _version,
+                    ),
+                    const SizedBox(height: 36),
+                    Center(
+                      child: Text(
+                        'made by Mino7406',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: subColor.withAlpha(120),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            _ThemePicker(
-              currentMode: currentMode,
-              onChanged: onThemeChanged,
-              isDark: isDark,
-              textColor: textColor,
-              subColor: subColor,
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  final Color subColor;
+  const _SectionLabel({required this.label, required this.subColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: subColor,
+        letterSpacing: 0.6,
+      ),
+    );
+  }
+}
+
+class _AppInfoCard extends StatelessWidget {
+  final bool isDark;
+  final Color textColor;
+  final Color subColor;
+  final String version;
+
+  const _AppInfoCard({
+    required this.isDark,
+    required this.textColor,
+    required this.subColor,
+    required this.version,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dividerColor = isDark ? AppColors.borderDark : AppColors.borderLight;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppColors.borderDark : AppColors.borderLight,
+        ),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withAlpha(8),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          children: [
+            _InfoRow(
+              label: '앱 이름',
+              textColor: textColor,
+              subColor: subColor,
+              trailing: Text(
+                '알림메모',
+                style: TextStyle(fontSize: 14, color: textColor),
+              ),
+            ),
+            Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: dividerColor),
+            _InfoRow(
+              label: '버전',
+              textColor: textColor,
+              subColor: subColor,
+              trailing: Row(
+                children: [
+                  Text(
+                    version.isEmpty ? '...' : version,
+                    style: TextStyle(fontSize: 14, color: textColor),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => launchUrl(
+                      Uri.parse(UpdateService.releasesUrl),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    child: const Text(
+                      '업데이트 확인',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.gradStart,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: dividerColor),
+            _InfoRow(
+              label: '제공',
+              textColor: textColor,
+              subColor: subColor,
+              trailing: Text(
+                'Mino7406',
+                style: TextStyle(fontSize: 14, color: textColor),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final Color textColor;
+  final Color subColor;
+  final Widget trailing;
+
+  const _InfoRow({
+    required this.label,
+    required this.textColor,
+    required this.subColor,
+    required this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 60,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                color: subColor,
+              ),
+            ),
+          ),
+          Expanded(child: trailing),
+        ],
       ),
     );
   }

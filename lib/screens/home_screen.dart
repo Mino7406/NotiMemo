@@ -5,9 +5,17 @@ import '../services/update_service.dart';
 import '../storage/memo_storage.dart';
 import '../theme/app_theme.dart';
 import 'faq_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final ThemeMode currentMode;
+  final void Function(ThemeMode) onThemeChanged;
+
+  const HomeScreen({
+    super.key,
+    required this.currentMode,
+    required this.onThemeChanged,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -17,7 +25,6 @@ class _HomeScreenState extends State<HomeScreen>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   final _controller = TextEditingController();
   List<MemoEntry> _memoList = [];
-  int _charCount = 0;
   bool _isPinning = false;
   bool _hasActiveNotification = false;
 
@@ -42,9 +49,6 @@ class _HomeScreenState extends State<HomeScreen>
       if (mounted) setState(() => _hasActiveNotification = false);
     });
     _checkUpdate();
-    _controller.addListener(() {
-      setState(() => _charCount = _controller.text.length);
-    });
     WidgetsBinding.instance.addPostFrameCallback((_) => _animCtrl.forward());
   }
 
@@ -157,7 +161,6 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() {
       if (current != null) {
         _controller.text = current;
-        _charCount = current.length;
       }
       _memoList = list;
       _hasActiveNotification = isActive;
@@ -271,7 +274,12 @@ class _HomeScreenState extends State<HomeScreen>
             position: _slideAnim,
             child: Column(
           children: [
-            _TopBar(subColor: subColor, textColor: textColor),
+            _TopBar(
+              subColor: subColor,
+              textColor: textColor,
+              currentMode: widget.currentMode,
+              onThemeChanged: widget.onThemeChanged,
+            ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
@@ -282,10 +290,13 @@ class _HomeScreenState extends State<HomeScreen>
                     const SizedBox(height: 24),
                     _InputCard(
                       controller: _controller,
-                      charCount: _charCount,
                       isDark: isDark,
                       textColor: textColor,
                       subColor: subColor,
+                      onClear: () {
+                        _controller.clear();
+                        MemoStorage.setCurrent('');
+                      },
                     ),
                     const SizedBox(height: 14),
                     _PinButton(
@@ -324,7 +335,15 @@ class _HomeScreenState extends State<HomeScreen>
 class _TopBar extends StatelessWidget {
   final Color textColor;
   final Color subColor;
-  const _TopBar({required this.textColor, required this.subColor});
+  final ThemeMode currentMode;
+  final void Function(ThemeMode) onThemeChanged;
+
+  const _TopBar({
+    required this.textColor,
+    required this.subColor,
+    required this.currentMode,
+    required this.onThemeChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -357,6 +376,18 @@ class _TopBar extends StatelessWidget {
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const FaqScreen()),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.settings_outlined, color: subColor, size: 22),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SettingsScreen(
+                  currentMode: currentMode,
+                  onThemeChanged: onThemeChanged,
+                ),
+              ),
             ),
           ),
         ],
@@ -397,17 +428,17 @@ class _HeroText extends StatelessWidget {
 
 class _InputCard extends StatelessWidget {
   final TextEditingController controller;
-  final int charCount;
   final bool isDark;
   final Color textColor;
   final Color subColor;
+  final VoidCallback onClear;
 
   const _InputCard({
     required this.controller,
-    required this.charCount,
     required this.isDark,
     required this.textColor,
     required this.subColor,
+    required this.onClear,
   });
 
   @override
@@ -434,64 +465,91 @@ class _InputCard extends StatelessWidget {
                 ),
               ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-            child: Row(
-              children: [
-                ShaderMask(
-                  shaderCallback: (b) => AppColors.brandGradient.createShader(b),
-                  child: const Icon(Icons.push_pin_rounded, color: Colors.white, size: 15),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                child: Row(
+                  children: [
+                    ShaderMask(
+                      shaderCallback: (b) => AppColors.brandGradient.createShader(b),
+                      child: const Icon(Icons.push_pin_rounded, color: Colors.white, size: 15),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      '새 메모',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.gradStart,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 6),
-                const Text(
-                  '새 메모',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.gradStart,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextField(
-            controller: controller,
-            maxLines: 6,
-            minLines: 6,
-            textAlignVertical: TextAlignVertical.top,
-            onChanged: (v) => MemoStorage.setCurrent(v),
-            style: TextStyle(fontSize: 16, height: 1.6, color: textColor),
-            decoration: InputDecoration(
-              hintText: '기억해야 할 것을 입력하세요...',
-              hintStyle: TextStyle(
-                color: isDark ? const Color(0xFF3D3F52) : const Color(0xFFD1D5DB),
-                fontSize: 16,
               ),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text(
-                  '$charCount / 50',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: charCount > 50 ? AppColors.danger : subColor,
+              TextField(
+                controller: controller,
+                maxLines: 6,
+                minLines: 6,
+                textAlignVertical: TextAlignVertical.top,
+                onChanged: (v) => MemoStorage.setCurrent(v),
+                style: TextStyle(fontSize: 16, height: 1.6, color: textColor),
+                decoration: InputDecoration(
+                  hintText: '기억해야 할 것을 입력하세요...',
+                  hintStyle: TextStyle(
+                    color: isDark ? const Color(0xFF3D3F52) : const Color(0xFFD1D5DB),
+                    fontSize: 16,
                   ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 14),
+            ],
+          ),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: _ClearButton(onTap: onClear, subColor: subColor),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ClearButton extends StatefulWidget {
+  final VoidCallback onTap;
+  final Color subColor;
+  const _ClearButton({required this.onTap, required this.subColor});
+
+  @override
+  State<_ClearButton> createState() => _ClearButtonState();
+}
+
+class _ClearButtonState extends State<_ClearButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.8 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(Icons.close_rounded, size: 18, color: widget.subColor),
+        ),
       ),
     );
   }

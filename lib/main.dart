@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/home_screen.dart';
-import 'screens/settings_screen.dart';
 import 'services/notification_service.dart';
 import 'storage/settings_storage.dart';
 import 'theme/app_theme.dart';
@@ -53,43 +52,13 @@ class NotiMemoApp extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
       ),
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
-        indicatorColor: AppColors.gradStart.withAlpha(isDark ? 45 : 30),
-        labelTextStyle: WidgetStateProperty.resolveWith((states) {
-          final selected = states.contains(WidgetState.selected);
-          return TextStyle(
-            fontSize: 12,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            color: selected
-                ? AppColors.gradStart
-                : (isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280)),
-          );
-        }),
-        iconTheme: WidgetStateProperty.resolveWith((states) {
-          final selected = states.contains(WidgetState.selected);
-          return IconThemeData(
-            color: selected
-                ? AppColors.gradStart
-                : (isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280)),
-            size: 22,
-          );
-        }),
-      ),
     );
   }
 }
 
-class _AppShell extends StatefulWidget {
+class _AppShell extends StatelessWidget {
   final ThemeMode currentMode;
   const _AppShell({required this.currentMode});
-
-  @override
-  State<_AppShell> createState() => _AppShellState();
-}
-
-class _AppShellState extends State<_AppShell> {
-  int _index = 0;
 
   void _changeTheme(ThemeMode mode) {
     _themeModeNotifier.value = mode;
@@ -98,38 +67,9 @@ class _AppShellState extends State<_AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Scaffold(
-      backgroundColor:
-          isDark ? AppColors.bgDark : AppColors.bgLight,
-      body: IndexedStack(
-        index: _index,
-        children: [
-          const HomeScreen(),
-          SettingsScreen(
-            currentMode: widget.currentMode,
-            onThemeChanged: _changeTheme,
-          ),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        elevation: 0,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: '홈',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings_rounded),
-            label: '설정',
-          ),
-        ],
-      ),
+    return HomeScreen(
+      currentMode: currentMode,
+      onThemeChanged: _changeTheme,
     );
   }
 }
