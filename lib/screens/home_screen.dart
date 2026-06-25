@@ -256,8 +256,127 @@ class _HomeScreenState extends State<HomeScreen>
           await MemoStorage.saveList([]);
           setState(() => _memoList = []);
         },
+        onRestore: _restoreMemo,
       ),
     );
+  }
+
+  Future<void> _restoreMemo(MemoEntry entry) async {
+    final confirmed = await _showRestoreConfirmDialog(entry.memo);
+    if (!confirmed || !mounted) return;
+
+    final permStatus = await NotificationService.checkPermission();
+    if (permStatus == 'permanentlyDenied') {
+      _toast('알림 권한이 차단되었습니다. 설정에서 허용해주세요.', isError: true);
+      return;
+    }
+    if (permStatus != 'granted') {
+      final granted = await NotificationService.requestPermission();
+      if (!granted) {
+        _toast('알림 권한이 필요합니다.', isError: true);
+        return;
+      }
+    }
+    try {
+      await NotificationService.show(entry.memo);
+      await MemoStorage.setCurrent(entry.memo);
+      await MemoStorage.setNotificationActive(true);
+      _controller.text = entry.memo;
+      setState(() => _hasActiveNotification = true);
+      _toast('알림이 다시 생성되었습니다!');
+    } catch (e) {
+      _toast('오류: $e', isError: true);
+    }
+  }
+
+  Future<bool> _showRestoreConfirmDialog(String memo) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.brandGradient,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.push_pin_rounded,
+                        color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '알림 재생성',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(
+                '이 메모로 알림을 다시 고정할까요?',
+                style: TextStyle(fontSize: 14, color: subColor, height: 1.6),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.elevatedDark : const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                  ),
+                ),
+                child: Text(
+                  memo,
+                  style: TextStyle(fontSize: 13.5, color: textColor, height: 1.5),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    style: TextButton.styleFrom(foregroundColor: subColor),
+                    child: const Text('취소'),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.gradStart,
+                    ),
+                    child: const Text(
+                      '재생성',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return confirmed ?? false;
   }
 
   @override
@@ -288,6 +407,18 @@ class _HomeScreenState extends State<HomeScreen>
                   children: [
                     _HeroText(textColor: textColor, subColor: subColor),
                     const SizedBox(height: 24),
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      child: _hasActiveNotification
+                          ? Column(
+                              children: [
+                                _ActiveBanner(isDark: isDark),
+                                const SizedBox(height: 10),
+                              ],
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                     _InputCard(
                       controller: _controller,
                       isDark: isDark,
@@ -304,17 +435,25 @@ class _HomeScreenState extends State<HomeScreen>
                       onTap: _createNotification,
                     ),
                     const SizedBox(height: 10),
-                    _CancelButton(
-                      isDark: isDark,
-                      isActive: _hasActiveNotification,
-                      onTap: _cancelNotification,
-                    ),
-                    const SizedBox(height: 10),
-                    _HistoryButton(
-                      count: _memoList.length,
-                      isDark: isDark,
-                      subColor: subColor,
-                      onTap: _showHistory,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _CancelButton(
+                            isDark: isDark,
+                            isActive: _hasActiveNotification,
+                            onTap: _cancelNotification,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _HistoryButton(
+                            count: _memoList.length,
+                            isDark: isDark,
+                            subColor: subColor,
+                            onTap: _showHistory,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 20),
                   ],
@@ -371,16 +510,18 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          IconButton(
-            icon: Icon(Icons.help_outline_rounded, color: subColor, size: 22),
-            onPressed: () => Navigator.push(
+          _AnimatedIconButton(
+            icon: Icons.help_outline_rounded,
+            color: subColor,
+            onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const FaqScreen()),
             ),
           ),
-          IconButton(
-            icon: Icon(Icons.settings_outlined, color: subColor, size: 22),
-            onPressed: () => Navigator.push(
+          _AnimatedIconButton(
+            icon: Icons.settings_outlined,
+            color: subColor,
+            onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => SettingsScreen(
@@ -388,6 +529,91 @@ class _TopBar extends StatelessWidget {
                   onThemeChanged: onThemeChanged,
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnimatedIconButton extends StatefulWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _AnimatedIconButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  State<_AnimatedIconButton> createState() => _AnimatedIconButtonState();
+}
+
+class _AnimatedIconButtonState extends State<_AnimatedIconButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.8 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Icon(widget.icon, color: widget.color, size: 22),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActiveBanner extends StatelessWidget {
+  final bool isDark;
+  const _ActiveBanner({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.gradStart.withAlpha(isDark ? 28 : 18),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.gradStart.withAlpha(isDark ? 70 : 55),
+        ),
+      ),
+      child: Row(
+        children: [
+          ShaderMask(
+            shaderCallback: (b) => AppColors.brandGradient.createShader(b),
+            child: const Icon(Icons.push_pin_rounded, color: Colors.white, size: 14),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '알림이 현재 고정되어 있어요',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: AppColors.gradStart.withAlpha(isDark ? 210 : 190),
+            ),
+          ),
+          const Spacer(),
+          Container(
+            width: 7,
+            height: 7,
+            decoration: const BoxDecoration(
+              color: AppColors.gradStart,
+              shape: BoxShape.circle,
             ),
           ),
         ],
@@ -426,7 +652,7 @@ class _HeroText extends StatelessWidget {
   }
 }
 
-class _InputCard extends StatelessWidget {
+class _InputCard extends StatefulWidget {
   final TextEditingController controller;
   final bool isDark;
   final Color textColor;
@@ -442,28 +668,60 @@ class _InputCard extends StatelessWidget {
   });
 
   @override
+  State<_InputCard> createState() => _InputCardState();
+}
+
+class _InputCardState extends State<_InputCard> {
+  final _focusNode = FocusNode();
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() => setState(() => _focused = _focusNode.hasFocus));
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
+        color: widget.isDark ? AppColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? AppColors.borderDark : AppColors.borderLight,
+          color: _focused
+              ? AppColors.gradStart.withAlpha(180)
+              : (widget.isDark ? AppColors.borderDark : AppColors.borderLight),
+          width: _focused ? 1.5 : 1.0,
         ),
-        boxShadow: isDark
-            ? null
-            : [
+        boxShadow: _focused
+            ? [
                 BoxShadow(
-                  color: const Color(0xFF667EEA).withAlpha(18),
-                  blurRadius: 28,
-                  offset: const Offset(0, 10),
+                  color: AppColors.gradStart.withAlpha(50),
+                  blurRadius: 24,
+                  offset: const Offset(0, 6),
                 ),
-                BoxShadow(
-                  color: Colors.black.withAlpha(8),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              ]
+            : (widget.isDark
+                ? null
+                : [
+                    BoxShadow(
+                      color: const Color(0xFF667EEA).withAlpha(18),
+                      blurRadius: 28,
+                      offset: const Offset(0, 10),
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withAlpha(8),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]),
       ),
       child: Stack(
         children: [
@@ -492,16 +750,17 @@ class _InputCard extends StatelessWidget {
                 ),
               ),
               TextField(
-                controller: controller,
+                controller: widget.controller,
+                focusNode: _focusNode,
                 maxLines: 6,
                 minLines: 6,
                 textAlignVertical: TextAlignVertical.top,
                 onChanged: (v) => MemoStorage.setCurrent(v),
-                style: TextStyle(fontSize: 16, height: 1.6, color: textColor),
+                style: TextStyle(fontSize: 16, height: 1.6, color: widget.textColor),
                 decoration: InputDecoration(
                   hintText: '기억해야 할 것을 입력하세요...',
                   hintStyle: TextStyle(
-                    color: isDark ? const Color(0xFF3D3F52) : const Color(0xFFD1D5DB),
+                    color: widget.isDark ? const Color(0xFF3D3F52) : const Color(0xFFD1D5DB),
                     fontSize: 16,
                   ),
                   border: InputBorder.none,
@@ -514,7 +773,7 @@ class _InputCard extends StatelessWidget {
           Positioned(
             top: 4,
             right: 4,
-            child: _ClearButton(onTap: onClear, subColor: subColor),
+            child: _ClearButton(onTap: widget.onClear, subColor: widget.subColor),
           ),
         ],
       ),
@@ -801,11 +1060,13 @@ class _HistorySheet extends StatefulWidget {
   final List<MemoEntry> memoList;
   final Future<void> Function(int) onDelete;
   final Future<void> Function() onClearAll;
+  final Future<void> Function(MemoEntry) onRestore;
 
   const _HistorySheet({
     required this.memoList,
     required this.onDelete,
     required this.onClearAll,
+    required this.onRestore,
   });
 
   @override
@@ -929,66 +1190,94 @@ class _HistorySheetState extends State<_HistorySheet> {
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                 itemCount: _list.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
-                itemBuilder: (_, i) => Container(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.elevatedDark
-                        : const Color(0xFFF9FAFB),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                itemBuilder: (_, i) => Dismissible(
+                  key: ValueKey(_list[i].time),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger.withAlpha(200),
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    child: const Icon(Icons.delete_rounded, color: Colors.white, size: 20),
                   ),
-                  child: Row(
-                    children: [
-                      ShaderMask(
-                        shaderCallback: (b) =>
-                            AppColors.brandGradient.createShader(b),
-                        child: const Icon(
-                          Icons.push_pin_rounded,
-                          color: Colors.white,
-                          size: 15,
+                  onDismissed: (_) async {
+                    await widget.onDelete(i);
+                    setState(() => _list.removeAt(i));
+                  },
+                  child: Material(
+                    color: isDark ? AppColors.elevatedDark : const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        final entry = _list[i];
+                        Navigator.pop(context);
+                        widget.onRestore(entry);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            Text(
-                              _list[i].memo,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: textColor,
-                                height: 1.45,
+                            ShaderMask(
+                              shaderCallback: (b) =>
+                                  AppColors.brandGradient.createShader(b),
+                              child: const Icon(
+                                Icons.push_pin_rounded,
+                                color: Colors.white,
+                                size: 15,
                               ),
                             ),
-                            if (_list[i].time != 0) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                _formatEntryTime(_list[i].time),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: subColor.withAlpha(160),
-                                ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _list[i].memo,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: textColor,
+                                      height: 1.45,
+                                    ),
+                                  ),
+                                  if (_list[i].time != 0) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _formatEntryTime(_list[i].time),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: subColor.withAlpha(160),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
-                            ],
+                            ),
+                            Icon(Icons.replay_rounded, size: 14, color: subColor.withAlpha(120)),
+                            const SizedBox(width: 2),
+                            IconButton(
+                              icon: Icon(Icons.close_rounded,
+                                  size: 18, color: subColor),
+                              onPressed: () async {
+                                await widget.onDelete(i);
+                                setState(() => _list.removeAt(i));
+                              },
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                  minWidth: 32, minHeight: 32),
+                            ),
                           ],
                         ),
                       ),
-                      IconButton(
-                        icon: Icon(Icons.close_rounded,
-                            size: 18, color: subColor),
-                        onPressed: () async {
-                          await widget.onDelete(i);
-                          setState(() => _list.removeAt(i));
-                        },
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                            minWidth: 32, minHeight: 32),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
