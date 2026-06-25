@@ -210,11 +210,11 @@ class _AppInfoCard extends StatelessWidget {
             ),
             Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: dividerColor),
             _InfoRow(
-              label: '제공',
+              label: '업데이트',
               textColor: textColor,
               subColor: subColor,
               trailing: Text(
-                'Mino7406',
+                '2026.06.08',
                 style: TextStyle(fontSize: 14, color: textColor),
               ),
             ),
