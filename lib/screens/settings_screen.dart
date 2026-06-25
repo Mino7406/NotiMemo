@@ -20,16 +20,23 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   String _version = '';
+  late ThemeMode _currentMode;
 
   @override
   void initState() {
     super.initState();
+    _currentMode = widget.currentMode;
     _loadVersion();
   }
 
   Future<void> _loadVersion() async {
     final info = await PackageInfo.fromPlatform();
     if (mounted) setState(() => _version = info.version);
+  }
+
+  void _changeTheme(ThemeMode mode) {
+    setState(() => _currentMode = mode);
+    widget.onThemeChanged(mode);
   }
 
   @override
@@ -76,8 +83,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _SectionLabel(label: '테마', subColor: subColor),
                     const SizedBox(height: 10),
                     _ThemePicker(
-                      currentMode: widget.currentMode,
-                      onChanged: widget.onThemeChanged,
+                      currentMode: _currentMode,
+                      onChanged: _changeTheme,
                       isDark: isDark,
                       textColor: textColor,
                       subColor: subColor,
