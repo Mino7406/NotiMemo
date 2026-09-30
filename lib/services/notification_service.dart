@@ -25,6 +25,19 @@ class NotificationService {
     return status.isGranted;
   }
 
+  /// 알림 권한을 확인하고 필요하면 요청한다.
+  /// 사용 가능하면 null, 아니면 사용자에게 보여줄 오류 메시지를 반환한다.
+  static Future<String?> ensurePermission() async {
+    final status = await checkPermission();
+    if (status == 'permanentlyDenied') {
+      return '알림 권한이 차단되었습니다. 설정에서 허용해주세요.';
+    }
+    if (status != 'granted' && !await requestPermission()) {
+      return '알림 권한이 필요합니다.';
+    }
+    return null;
+  }
+
   // Returns: 'granted', 'denied', 'permanentlyDenied'
   static Future<String> checkPermission() async {
     final status = await Permission.notification.status;
