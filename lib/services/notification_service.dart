@@ -7,10 +7,31 @@ class NotificationService {
 
   static Future<void> initialize() async {}
 
-  static void listenForDismissal(void Function() onDismissed) {
+  /// 알림이 지워지거나 고쳐지거나 예약이 고정되는 등 고정 상태가 바뀌면 [onChanged]가 불린다.
+  static void listenForChanges(void Function() onChanged) {
     _channel.setMethodCallHandler((call) async {
-      if (call.method == 'notificationDismissed') onDismissed();
+      if (call.method == 'notificationDismissed') onChanged();
     });
+  }
+
+  static Future<void> schedule(MemoEntry entry, DateTime at) async {
+    await _channel.invokeMethod('schedule', {
+      'id': entry.id,
+      'memo': entry.memo,
+      'at': at.millisecondsSinceEpoch,
+    });
+  }
+
+  static Future<void> cancelSchedule(String id) async {
+    await _channel.invokeMethod('cancelSchedule', {'id': id});
+  }
+
+  /// 정확한 알람 권한이 있는지 (Android 12 미만은 항상 true).
+  static Future<bool> canScheduleExact() async =>
+      await _channel.invokeMethod<bool>('canScheduleExact') ?? true;
+
+  static Future<void> requestExactAlarm() async {
+    await _channel.invokeMethod('requestExactAlarm');
   }
 
   static Future<void> show(MemoEntry entry) async {

@@ -4,7 +4,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -48,6 +50,30 @@ class MainActivity : FlutterActivity() {
                             action = NotiMemoService.ACTION_STOP_ALL
                         }
                     })
+                    result.success(null)
+                }
+                "schedule" -> {
+                    val id = call.argument<String>("id")
+                    val memo = call.argument<String>("memo")
+                    val at = call.argument<Number>("at")?.toLong()
+                    if (id == null || memo == null || at == null) {
+                        result.error("bad_args", "id, memo, at 필요", null)
+                    } else {
+                        AlarmScheduler.schedule(this, id, memo, at)
+                        result.success(null)
+                    }
+                }
+                "cancelSchedule" -> {
+                    call.argument<String>("id")?.let { AlarmScheduler.cancel(this, it) }
+                    result.success(null)
+                }
+                "canScheduleExact" -> result.success(AlarmScheduler.canScheduleExact(this))
+                "requestExactAlarm" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                            data = Uri.parse("package:$packageName")
+                        })
+                    }
                     result.success(null)
                 }
                 else -> result.notImplemented()

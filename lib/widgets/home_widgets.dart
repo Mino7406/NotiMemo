@@ -436,9 +436,13 @@ class HistoryButton extends StatefulWidget {
   final bool isDark;
   final Color subColor;
   final VoidCallback onTap;
+  final String label;
+  final IconData icon;
 
   const HistoryButton({
     super.key,
+    this.label = '알림 내역',
+    this.icon = Icons.history_rounded,
     required this.count,
     required this.isDark,
     required this.subColor,
@@ -483,10 +487,10 @@ class _HistoryButtonState extends State<HistoryButton> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.history_rounded, size: 20, color: widget.subColor),
+              Icon(widget.icon, size: 20, color: widget.subColor),
               const SizedBox(width: 8),
               Text(
-                '알림 내역',
+                widget.label,
                 style: TextStyle(
                   color: widget.subColor,
                   fontSize: 15,
@@ -588,6 +592,64 @@ class _CancelButtonState extends State<CancelButton> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 고정 버튼 옆에 두는 정사각형 보조 버튼 (예약 등).
+class SquareIconButton extends StatefulWidget {
+  final IconData icon;
+  final bool isDark;
+  final VoidCallback onTap;
+  final String tooltip;
+  const SquareIconButton({
+    super.key,
+    required this.icon,
+    required this.isDark,
+    required this.onTap,
+    required this.tooltip,
+  });
+
+  @override
+  State<SquareIconButton> createState() => _SquareIconButtonState();
+}
+
+class _SquareIconButtonState extends State<SquareIconButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: widget.tooltip,
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) {
+          setState(() => _pressed = false);
+          widget.onTap();
+        },
+        onTapCancel: () => setState(() => _pressed = false),
+        child: AnimatedScale(
+          scale: _pressed ? 0.95 : 1.0,
+          duration: const Duration(milliseconds: 100),
+          child: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: _pressed
+                  ? AppColors.gradStart.withAlpha(widget.isDark ? 30 : 20)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: widget.isDark
+                    ? AppColors.borderDark
+                    : AppColors.borderLight,
+                width: 1.5,
+              ),
+            ),
+            child: Icon(widget.icon, size: 24, color: AppColors.gradStart),
           ),
         ),
       ),

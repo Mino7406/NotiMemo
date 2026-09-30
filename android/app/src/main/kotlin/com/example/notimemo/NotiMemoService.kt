@@ -11,6 +11,7 @@ import android.os.IBinder
 import android.text.SpannableString
 import android.text.style.StyleSpan
 import androidx.core.app.NotificationCompat
+import androidx.core.app.RemoteInput
 import androidx.core.app.ServiceCompat
 import org.json.JSONArray
 import org.json.JSONObject
@@ -27,18 +28,34 @@ class NotiMemoService : Service() {
         const val ACTION_STOP = "com.example.notimemo.STOP"
         const val ACTION_STOP_ALL = "com.example.notimemo.STOP_ALL"
         const val ACTION_REPOST = "com.example.notimemo.REPOST"
+        const val ACTION_EDIT = "com.example.notimemo.EDIT"
         const val EXTRA_ID = "id"
         const val EXTRA_MEMO = "memo"
         const val EXTRA_TIME = "time"
+        const val KEY_REPLY = "reply_text"
 
         private const val FLUTTER_PREFS = "FlutterSharedPreferences"
         private const val PREF_PINNED = "flutter.pinned_notes"
+        private const val PREF_HISTORY = "flutter.memo_list"
 
         // 멀티 메모 이전 버전이 쓰던 단일 메모 저장소 (마이그레이션용)
         private const val LEGACY_PREFS = "notimemo_prefs"
         private const val LEGACY_MEMO = "current_memo"
         private const val LEGACY_TIME = "created_time"
         private const val LEGACY_ID = "legacy_current"
+
+        fun ensureChannel(context: Context) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+            val nm = context.getSystemService(NotificationManager::class.java)
+            if (nm.getNotificationChannel(CHANNEL_ID) != null) return
+            val channel = NotificationChannel(CHANNEL_ID, "알림메모", NotificationManager.IMPORTANCE_LOW).apply {
+                description = "알림 메모를 표시합니다"
+                setSound(null, null)
+                enableLights(false)
+                enableVibration(false)
+            }
+            nm.createNotificationChannel(channel)
+        }
     }
 
     private class Note(val id: String, val memo: String, val time: Long)
@@ -58,6 +75,21 @@ class NotiMemoService : Service() {
             ACTION_STOP_ALL -> {
                 savePinned(emptyList())
                 return afterChange()
+            }
+            ACTION_EDIT -> {
+                val id = intent.getStringExtra(EXTRA_ID) ?: return stickyIfAny()
+                val note = loadPinned().firstOrNull { it.id == id } ?: return stickyIfAny()
+                val text = RemoteInput.getResultsFromIntent(intent)
+                    ?.getCharSequence(KEY_REPLY)?.toString()?.trim()
+                // 빈 입력이면 원래 알림을 다시 게시해서 입력창만 닫는다.
+                val updated = if (text.isNullOrEmpty()) note else Note(id, text, note.time)
+                if (updated !== note) {
+                    savePinned(loadPinned().map { if (it.id == id) updated else it })
+                    updateHistory(id, text!!)
+                }
+                post(updated)
+                sendBroadcast(Intent("com.example.notimemo.DISMISSED").apply { setPackage(packageName) })
+                return START_STICKY
             }
             ACTION_REPOST -> {
                 val id = intent.getStringExtra(EXTRA_ID) ?: return stickyIfAny()
@@ -138,6 +170,21 @@ class NotiMemoService : Service() {
         )
         val stopIntent = servicePendingIntent(note.id, ACTION_STOP)
         val repostIntent = servicePendingIntent(note.id, ACTION_REPOST)
+        val editIntent = PendingIntent.getService(
+            this, 0,
+            Intent(this, NotiMemoService::class.java).apply {
+                action = ACTION_EDIT
+                data = Uri.parse("notimemo://memo/${Uri.encode(note.id)}/edit")
+                putExtra(EXTRA_ID, note.id)
+            },
+            // RemoteInput 결과가 채워지려면 가변이어야 한다.
+            PendingIntent.FLAG_UPDATE_CURRENT or
+                (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0)
+        )
+        val editAction = NotificationCompat.Action.Builder(0, "수정", editIntent)
+            .addRemoteInput(RemoteInput.Builder(KEY_REPLY).setLabel("수정할 내용").build())
+            .setAllowGeneratedReplies(false)
+            .build()
 
         val boldMemo = SpannableString(note.memo).apply {
             setSpan(StyleSpan(Typeface.BOLD), 0, note.memo.length, 0)
@@ -156,6 +203,7 @@ class NotiMemoService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setGroup(GROUP_KEY)
             .addAction(0, "지우기", stopIntent)
+            .addAction(editAction)
             .setDeleteIntent(repostIntent)
             .build()
     }
@@ -213,6 +261,33 @@ class NotiMemoService : Service() {
         getSystemService(NotificationManager::class.java).cancel(notifId(id))
     }
 
+    /** 알림에서 고친 내용을 앱의 히스토리(`memo_list`)에도 반영한다. */
+    private fun updateHistory(id: String, memo: String) {
+        val prefs = flutterPrefs()
+        val raw = prefs.getString(PREF_HISTORY, null) ?: return
+        try {
+            val arr = JSONArray(raw)
+            var changed = false
+            for (i in 0 until arr.length()) {
+                val item = arr.get(i)
+                when {
+                    item is JSONObject && item.optString("id") == id -> {
+                        item.put("memo", memo)
+                        changed = true
+                    }
+                    // 옛 포맷(문자열)의 id는 위치 기반(legacy_i)이라 객체로 바꿔 저장한다.
+                    item is String && id == "legacy_$i" -> {
+                        arr.put(i, JSONObject().put("id", id).put("memo", memo).put("time", 0))
+                        changed = true
+                    }
+                }
+            }
+            if (changed) prefs.edit().putString(PREF_HISTORY, arr.toString()).apply()
+        } catch (e: Exception) {
+            // 히스토리가 깨져 있어도 알림 수정은 계속한다.
+        }
+    }
+
     /** 멀티 메모 이전 버전의 단일 메모를 고정 목록으로 한 번 옮긴다. */
     private fun migrateLegacy() {
         val legacy = getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE)
@@ -223,16 +298,5 @@ class NotiMemoService : Service() {
         legacy.edit().remove(LEGACY_MEMO).remove(LEGACY_TIME).apply()
     }
 
-    private fun ensureChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val nm = getSystemService(NotificationManager::class.java)
-        if (nm.getNotificationChannel(CHANNEL_ID) != null) return
-        val channel = NotificationChannel(CHANNEL_ID, "알림메모", NotificationManager.IMPORTANCE_LOW).apply {
-            description = "알림 메모를 표시합니다"
-            setSound(null, null)
-            enableLights(false)
-            enableVibration(false)
-        }
-        nm.createNotificationChannel(channel)
-    }
+    private fun ensureChannel() = ensureChannel(this)
 }
