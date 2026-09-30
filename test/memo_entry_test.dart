@@ -99,4 +99,23 @@ void main() {
       expect(await MemoStorage.getList(), isEmpty);
     });
   });
+
+  group('고정 id 목록', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    test('네이티브가 기록한 JSON에서 id만 읽는다', () async {
+      SharedPreferences.setMockInitialValues({
+        'pinned_notes': jsonEncode([
+          {'id': 'a', 'memo': '하나', 'time': 1},
+          {'id': 'b', 'memo': '둘', 'time': 2},
+        ]),
+      });
+      expect(await MemoStorage.getPinnedIds(), {'a', 'b'});
+    });
+
+    test('없거나 깨진 값은 빈 집합', () async {
+      expect(await MemoStorage.getPinnedIds(), isEmpty);
+      expect(MemoStorage.parsePinnedIds('not json'), isEmpty);
+    });
+  });
 }

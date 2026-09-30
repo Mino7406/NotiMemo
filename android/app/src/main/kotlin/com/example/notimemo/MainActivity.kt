@@ -28,6 +28,8 @@ class MainActivity : FlutterActivity() {
                     val memo = call.argument<String>("memo") ?: ""
                     val intent = Intent(this, NotiMemoService::class.java).apply {
                         putExtra(NotiMemoService.EXTRA_MEMO, memo)
+                        call.argument<String>("id")?.let { putExtra(NotiMemoService.EXTRA_ID, it) }
+                        call.argument<Number>("time")?.let { putExtra(NotiMemoService.EXTRA_TIME, it.toLong()) }
                     }
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         startForegroundService(intent)
@@ -37,8 +39,14 @@ class MainActivity : FlutterActivity() {
                     result.success(null)
                 }
                 "cancel" -> {
+                    val id = call.argument<String>("id")
                     startService(Intent(this, NotiMemoService::class.java).apply {
-                        action = NotiMemoService.ACTION_STOP
+                        if (id != null) {
+                            action = NotiMemoService.ACTION_STOP
+                            putExtra(NotiMemoService.EXTRA_ID, id)
+                        } else {
+                            action = NotiMemoService.ACTION_STOP_ALL
+                        }
                     })
                     result.success(null)
                 }

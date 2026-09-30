@@ -5,7 +5,7 @@ import '../models/memo_entry.dart';
 class MemoStorage {
   static const _keyList = 'memo_list';
   static const _keyCurrent = 'saved_memo';
-  static const _keyActive = 'notification_active';
+  static const _keyPinned = 'pinned_notes';
 
   static Future<List<MemoEntry>> getList() async {
     final prefs = await SharedPreferences.getInstance();
@@ -38,18 +38,22 @@ class MemoStorage {
     await prefs.remove(_keyCurrent);
   }
 
-  static Future<bool> isNotificationActive() async {
+  /// 지금 알림창에 고정 중인 메모의 id들. 네이티브 서비스가 기록하는 값이라
+  /// 읽기 전에 캐시를 새로 고친다.
+  static Future<Set<String>> getPinnedIds() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
-    return prefs.getBool(_keyActive) ?? false;
+    return parsePinnedIds(prefs.getString(_keyPinned));
   }
 
-  static Future<void> setNotificationActive(bool active) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (active) {
-      await prefs.setBool(_keyActive, true);
-    } else {
-      await prefs.remove(_keyActive);
+  static Set<String> parsePinnedIds(String? raw) {
+    if (raw == null) return {};
+    try {
+      return {
+        for (final o in jsonDecode(raw) as List) (o as Map)['id'] as String,
+      };
+    } catch (_) {
+      return {};
     }
   }
 }

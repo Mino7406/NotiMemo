@@ -113,7 +113,8 @@ class _AnimatedIconButtonState extends State<AnimatedIconButton> {
 
 class ActiveBanner extends StatelessWidget {
   final bool isDark;
-  const ActiveBanner({super.key, required this.isDark});
+  final int count;
+  const ActiveBanner({super.key, required this.isDark, required this.count});
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +136,7 @@ class ActiveBanner extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            '알림이 현재 고정되어 있어요',
+            count > 1 ? '알림 $count개가 고정되어 있어요' : '알림이 현재 고정되어 있어요',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
@@ -523,11 +524,13 @@ class _HistoryButtonState extends State<HistoryButton> {
 class CancelButton extends StatefulWidget {
   final bool isDark;
   final bool isActive;
+  final String label;
   final VoidCallback onTap;
   const CancelButton({
     super.key,
     required this.isDark,
     required this.isActive,
+    this.label = '알림 지우기',
     required this.onTap,
   });
 
@@ -577,7 +580,7 @@ class _CancelButtonState extends State<CancelButton> {
               Icon(Icons.notifications_off_rounded, size: 20, color: contentColor),
               const SizedBox(width: 8),
               Text(
-                '알림 지우기',
+                widget.label,
                 style: TextStyle(
                   color: contentColor,
                   fontSize: 15,

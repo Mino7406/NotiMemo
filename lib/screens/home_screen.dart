@@ -27,7 +27,9 @@ class _HomeScreenState extends State<HomeScreen>
   final _controller = TextEditingController();
   List<MemoEntry> _memoList = [];
   bool _isPinning = false;
-  bool _hasActiveNotification = false;
+  Set<String> _pinnedIds = {};
+
+  bool get _hasActiveNotification => _pinnedIds.isNotEmpty;
 
   late final AnimationController _animCtrl = AnimationController(
     vsync: this,
@@ -46,9 +48,7 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addObserver(this);
     _load();
     NotificationService.requestPermission();
-    NotificationService.listenForDismissal(() {
-      if (mounted) setState(() => _hasActiveNotification = false);
-    });
+    NotificationService.listenForDismissal(_syncNotificationState);
     _checkUpdate();
     WidgetsBinding.instance.addPostFrameCallback((_) => _animCtrl.forward());
   }
@@ -72,20 +72,20 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _syncNotificationState() async {
-    final isActive = await MemoStorage.isNotificationActive();
-    if (mounted) setState(() => _hasActiveNotification = isActive);
+    final ids = await MemoStorage.getPinnedIds();
+    if (mounted) setState(() => _pinnedIds = ids);
   }
 
   Future<void> _load() async {
     final current = await MemoStorage.getCurrent();
     final list = await MemoStorage.getList();
-    final isActive = await MemoStorage.isNotificationActive();
+    final pinned = await MemoStorage.getPinnedIds();
     setState(() {
       if (current != null) {
         _controller.text = current;
       }
       _memoList = list;
-      _hasActiveNotification = isActive;
+      _pinnedIds = pinned;
     });
   }
 
@@ -95,9 +95,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _cancelNotification() async {
     if (!_hasActiveNotification) return;
     await NotificationService.cancel();
-    await MemoStorage.clearCurrent();
-    await MemoStorage.setNotificationActive(false);
-    setState(() => _hasActiveNotification = false);
+    setState(() => _pinnedIds = {});
     _toast('알림이 해제되었습니다.');
   }
 
@@ -114,17 +112,15 @@ class _HomeScreenState extends State<HomeScreen>
     }
     setState(() => _isPinning = true);
     try {
-      await NotificationService.show(memo);
-      await MemoStorage.setCurrent(memo);
-      await MemoStorage.setNotificationActive(true);
-      final updated = [
-        MemoEntry.create(memo),
-        ..._memoList,
-      ];
+      final entry = MemoEntry.create(memo);
+      await NotificationService.show(entry);
+      final updated = [entry, ..._memoList];
       await MemoStorage.saveList(updated);
+      _controller.clear();
+      await MemoStorage.clearCurrent();
       setState(() {
         _memoList = updated;
-        _hasActiveNotification = true;
+        _pinnedIds = {..._pinnedIds, entry.id};
       });
       _toast('알림이 고정되었습니다!');
     } catch (e) {
@@ -165,11 +161,11 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
     try {
-      await NotificationService.show(entry.memo);
-      await MemoStorage.setCurrent(entry.memo);
-      await MemoStorage.setNotificationActive(true);
-      _controller.text = entry.memo;
-      setState(() => _hasActiveNotification = true);
+      // 옛 포맷에서 온 기록은 time이 0이라, 다시 고정하는 시각으로 표시한다.
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await NotificationService.show(
+          MemoEntry(id: entry.id, memo: entry.memo, time: now));
+      setState(() => _pinnedIds = {..._pinnedIds, entry.id});
       _toast('알림이 다시 생성되었습니다!');
     } catch (e) {
       _toast('오류: $e', isError: true);
@@ -210,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen>
                       child: _hasActiveNotification
                           ? Column(
                               children: [
-                                ActiveBanner(isDark: isDark),
+                                ActiveBanner(isDark: isDark, count: _pinnedIds.length),
                                 const SizedBox(height: 10),
                               ],
                             )
@@ -238,6 +234,7 @@ class _HomeScreenState extends State<HomeScreen>
                           child: CancelButton(
                             isDark: isDark,
                             isActive: _hasActiveNotification,
+                            label: _pinnedIds.length > 1 ? '모두 지우기' : '알림 지우기',
                             onTap: _cancelNotification,
                           ),
                         ),

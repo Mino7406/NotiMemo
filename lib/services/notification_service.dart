@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../models/memo_entry.dart';
 
 class NotificationService {
   static const _channel = MethodChannel('com.example.notimemo/notification');
@@ -12,12 +13,17 @@ class NotificationService {
     });
   }
 
-  static Future<void> show(String memo) async {
-    await _channel.invokeMethod('show', {'memo': memo});
+  static Future<void> show(MemoEntry entry) async {
+    await _channel.invokeMethod('show', {
+      'id': entry.id,
+      'memo': entry.memo,
+      'time': entry.time,
+    });
   }
 
-  static Future<void> cancel() async {
-    await _channel.invokeMethod('cancel');
+  /// [id]가 null이면 고정된 메모를 전부 해제한다.
+  static Future<void> cancel([String? id]) async {
+    await _channel.invokeMethod('cancel', {'id': id});
   }
 
   static Future<bool> requestPermission() async {
