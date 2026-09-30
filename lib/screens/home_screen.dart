@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/notification_service.dart';
 import '../services/update_service.dart';
+import '../models/memo_entry.dart';
 import '../storage/memo_storage.dart';
 import '../widgets/app_dialogs.dart';
 import '../widgets/app_toast.dart';
@@ -117,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen>
       await MemoStorage.setCurrent(memo);
       await MemoStorage.setNotificationActive(true);
       final updated = [
-        MemoEntry(memo: memo, time: DateTime.now().millisecondsSinceEpoch),
+        MemoEntry.create(memo),
         ..._memoList,
       ];
       await MemoStorage.saveList(updated);

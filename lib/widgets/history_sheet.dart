@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../storage/memo_storage.dart';
+import '../models/memo_entry.dart';
 import '../theme/app_theme.dart';
 import '../utils/time_format.dart';
 
@@ -139,7 +139,7 @@ class _HistorySheetState extends State<HistorySheet> {
                 itemCount: _list.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (_, i) => Dismissible(
-                  key: ValueKey(_list[i].time),
+                  key: ValueKey(_list[i].id),
                   direction: DismissDirection.endToStart,
                   background: Container(
                     alignment: Alignment.centerRight,
