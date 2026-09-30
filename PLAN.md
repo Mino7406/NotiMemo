@@ -1,5 +1,62 @@
 # NotiMemo v3.0 업그레이드 계획 (공학제 출품)
 
+## 인수인계: 이 문서를 처음 읽는 Claude Code 세션에게
+이 저장소는 집 PC의 Claude Code 세션이 Phase 1~2를 끝낸 상태다. 이 문서는 그 세션과 사용자가 나눈 대화를 모르는 채로 이어받을 수 있게 쓴 것이다. 아래 순서대로 읽는다.
+
+**시작 전에**
+1. `git pull` 로 `master` 최신을 받는다. 작업이 끝난 브랜치는 모두 삭제했고 `master`만 있다.
+2. 사용자는 한국어로 대화하고 앱은 한국어 UI다. 답변·커밋 메시지·주석은 한국어로 쓴다(기존 코드 스타일과 같음).
+3. 앱은 Flutter(Dart) + 네이티브 Kotlin 혼합이다. 알림·알람은 전부 네이티브, 화면은 Flutter.
+
+**현재 상태 한 줄 요약**: 멀티 메모, 알림 액션(지우기/수정), 예약 알림이 완성돼 실기기 확인까지 끝났고, **다음은 Phase 3-6 사진 OCR**이다.
+
+### 파일 지도
+| 경로 | 역할 |
+|---|---|
+| `android/.../NotiMemoService.kt` | 포그라운드 서비스. 고정 메모마다 알림 1개 게시, 지우기/재고정/인라인 수정(`RemoteInput`) 처리, 고정 목록 저장 |
+| `android/.../AlarmScheduler.kt` | 예약 엔진. `AlarmScheduler`(저장·알람 등록·발동), `AlarmReceiver`, `BootReceiver`가 한 파일에 있음 |
+| `android/.../MainActivity.kt` | Flutter ↔ 네이티브 MethodChannel 브리지 |
+| `lib/screens/home_screen.dart` | 홈 화면 상태·동작 (고정, 예약, 히스토리, 예약 목록 진입) |
+| `lib/screens/scheduled_screen.dart` | 예약 목록 (리스트, 취소, 눌러서 입력창으로 불러오기) |
+| `lib/widgets/home_widgets.dart` | 홈 화면 조각 위젯들 (`InputCard`, `PinButton`, `HistoryButton`, `SquareIconButton` 등) |
+| `lib/widgets/schedule_sheet.dart` | 예약 시각 선택 하단 시트 (직접 만든 휠 + 빠른 선택 칩) |
+| `lib/widgets/history_sheet.dart`, `app_dialogs.dart`, `app_toast.dart` | 히스토리 시트, 다이얼로그, 토스트 |
+| `lib/models/memo_entry.dart`, `scheduled_note.dart` | 메모 모델(옛 포맷 마이그레이션 포함), 예약 모델 |
+| `lib/storage/memo_storage.dart` | `shared_preferences` 접근 (히스토리, 임시 입력, 고정 id, 예약 목록) |
+| `lib/services/notification_service.dart` | MethodChannel 래퍼 |
+| `test/` | 모델·저장소·파싱 단위 테스트 (14개) |
+
+### 데이터 규약 (가장 중요)
+- 고정된 메모의 유일한 저장소는 `flutter.pinned_notes`(JSON `[{id,memo,time}]`), 예약은 `flutter.scheduled_notes`(JSON `[{id,memo,at}]`). **둘 다 네이티브가 쓰고 Flutter는 읽기만 한다.** Flutter에서 직접 쓰지 말 것. 앱이 꺼져 있어도 지우기·재고정·예약 발동이 돼야 해서 네이티브가 소유한다.
+- Flutter가 읽을 때는 `prefs.reload()`를 먼저 부른다(네이티브가 바꾼 값을 보기 위해). `MemoStorage`의 getter가 이미 그렇게 한다.
+- 히스토리(`memo_list`)는 Flutter가 쓰지만, 알림에서 인라인 수정하면 네이티브가 같은 id 항목의 `memo`를 고쳐 쓴다.
+- 메모의 `id`는 생성 시각(마이크로초) 기반 문자열. 옛 데이터는 위치 기반 `legacy_<i>`, 옛 단일 메모는 `legacy_current`.
+- 저장 포맷은 세 세대(문자열 / `{memo,time}` / 전체 필드)를 모두 읽어야 한다. `MemoEntry.toJson`은 기본값이 아닌 필드만 기록한다(옛 버전 앱 호환).
+
+### MethodChannel (`com.example.notimemo/notification`)
+Flutter → 네이티브: `show{id,memo,time}`, `cancel{id?}`(id 없으면 전체 해제), `schedule{id,memo,at}`, `cancelSchedule{id}`, `canScheduleExact`, `requestExactAlarm`.
+네이티브 → Flutter: `notificationDismissed`(고정 상태가 바뀜. 이름과 달리 지우기·수정·예약 발동에도 불린다).
+
+### 작업 방식 (사용자와 합의된 흐름)
+1. 기능 하나를 시작하기 전에 **설계를 짧게 제시하고 사용자 승인**을 받는다. 승인 전에 코드를 쓰지 않는다.
+2. 작업은 `feature/...` 브랜치에서 하고, 끝나면 사용자가 **실기기에서 직접 테스트**한다.
+3. 사용자가 "테스트 다 했어"라고 하면 커밋 → `master` 병합. **푸시와 브랜치 삭제는 그때마다 사용자에게 물어보고** 한다.
+4. 커밋 메시지는 한국어, `Phase N: ...` 식 요약. 완료한 단계는 이 문서의 "진행 현황" 표를 갱신한다.
+5. 빌드 검증은 `flutter analyze`(무결점 유지)와 `flutter test`. 알림·알람 동작은 자동 테스트로 확인할 수 없으니 **실기기 확인 항목을 사용자에게 목록으로 준다.**
+
+### 반드시 피할 것 (실제로 겪은 사고 포함)
+- **`flutter install`을 쓰지 말 것.** release APK를 못 찾으면 실패하기 전에 폰의 기존 앱부터 삭제해 저장 데이터가 사라졌다. 설치는 `flutter run -d <기기ID> --no-resident`로 한다. 기기 ID는 `flutter devices`로 확인(집에서는 갤럭시 `R3CXB02YR7V`였고, 다른 PC·기기면 달라진다).
+- **`flutter pub get`이 `pubspec.lock`과 `linux/`, `macos/`, `windows/`의 자동 생성 파일을 바꾼다**(Flutter SDK 버전 차이로 패키지 버전이 낮아지기도 함). 의도한 변경이 아니면 커밋하지 말고 `git checkout -- <파일>`로 되돌린다. 브랜치 전환이 막힐 때도 같은 원인이다.
+- 폰에 설치한 앱이 디버그 빌드면 애니메이션이 원래 덜 부드럽다. 부드러움 판단은 `flutter run --release -d <기기ID> --no-resident`로 한다(디버그·릴리스가 같은 debug 키로 서명돼 덮어써도 데이터가 유지됨).
+- 사용자는 Windows(PowerShell/Git Bash)를 쓴다. 경로에 OneDrive가 끼어 있어 폴더가 동기화 때문에 잠깐 안 보이는 일이 한 번 있었다.
+
+### 다음 작업: Phase 3-6 사진 OCR (설계는 아직 승인 전)
+- 목표: 카메라/갤러리에서 사진을 골라 글자를 읽고 **인식된 텍스트를 메모 입력창에 채워** 사용자가 고친 뒤 고정·예약하게 한다.
+- 계획된 도구: `google_mlkit_text_recognition`(온디바이스, 무료, 오프라인) + 이미지 선택 패키지(`image_picker` 등). 한국어 인식이 필요하면 ML Kit 한국어 스크립트 옵션을 확인할 것(라이브러리 문서를 확인하고 결정).
+- 붙일 자리: `home_screen.dart`의 입력 영역(`InputCard`)과 고정/예약 버튼 줄. 홈 화면은 **최소 변경** 원칙을 유지해왔다(입력창·고정 버튼은 그대로 두고 보조 버튼을 곁들임).
+- 확인·결정할 것: 카메라 권한 흐름(Android 13+), 새 의존성 추가에 따른 `pubspec.lock` 변경(위 주의사항 참고), 인식 결과가 길거나 비었을 때의 처리, 사진 원본은 저장하지 않기.
+- 그다음은 Phase 3-7(LLM 자동 분류)인데, **API 공급자와 키 관리 방식이 아직 미정**이라 사용자에게 물어야 한다. 키를 APK에 넣지 않는다는 원칙만 확정.
+
 ## 0. 목표
 "알림창에 메모 고정" 앱을 **여러 메모 · 예약 · 제로클릭 조작 · AI 자동 정리**까지 되는 앱으로 확장한다.
 발표 스토리: `입력(텍스트/사진) → AI가 분류·요약·시간 추출 → 알림에 고정/예약 → 알림창에서 바로 완료 처리`
@@ -35,8 +92,8 @@
 - **정확한 알람 권한(`SCHEDULE_EXACT_ALARM`) 없이 예약**하면 정확도가 낮은 알람으로 대체되고, 백그라운드에서 서비스를 시작하지 못해 일반 알림으로 뜰 수 있다. 첫 예약 때 설정 화면으로 안내한다.
 - **`MemoEntry.pinned` 필드는 아직 미사용**: 고정 여부는 `flutter.pinned_notes`의 id로 판단한다. 필드를 계속 둘지는 Phase 3에서 다시 정한다.
 - **`flutter_local_notifications`**는 여전히 의존성에만 있고 실제로 쓰이지 않는다(정리 후보).
-- 이 PC의 Flutter가 `pub get` 때 `pubspec.lock`의 패키지 버전을 낮추고 플랫폼 자동 생성 파일을 바꾼다. 커밋에서 제외하고 되돌릴 것.
-- 개발 중 `flutter install`은 사용하지 말 것: 실패 전에 폰의 기존 앱을 삭제해 저장 데이터가 사라진다. 설치는 `flutter run -d <기기ID> --no-resident`로 한다.
+- 집 PC의 Flutter는 `pub get` 때 `pubspec.lock`의 패키지 버전을 낮추고 플랫폼 자동 생성 파일을 바꿨다. 커밋에서 제외하고 되돌릴 것(자세한 건 위 "반드시 피할 것").
+- `flutter install`은 사용하지 말 것(위 "반드시 피할 것" 참고).
 - 자동 테스트는 모델·저장소·파싱 로직(14개)만 다룬다. 알림·알람 동작은 실기기 확인이 필요하다.
 
 ## 1. 확정 기능 (팀 논의 결과)
@@ -51,7 +108,9 @@
 
 제외/보류: 음성 입력, 지오펜싱, 커스터마이징 (여유 있을 때만)
 
-## 2. 현재 구조 (조사 결과)
+## 2. v2.6 시점의 구조 (작업 전 조사 기록 — 현재 코드가 아님)
+> 아래는 Phase 1 시작 전에 조사한 내용이다. 지금은 멀티 메모·예약이 구현돼 달라졌으니, 현재 구조는 위 "인수인계"와 "구현된 구조"를 볼 것.
+
 - 알림은 Flutter 패키지가 아니라 **네이티브 Kotlin `NotiMemoService`** (포그라운드 서비스, `NOTIFICATION_ID = 1` 고정)가 만든다. Flutter와는 MethodChannel(`show`/`cancel`)로 통신.
 - 메모 저장은 `shared_preferences`: 현재 메모 1개(`saved_memo`) + 히스토리 목록(`memo_list`, `MemoEntry{memo,time}`).
 - 지우기 버튼(`ACTION_STOP`), 스와이프 삭제 시 재고정(`ACTION_REPOST`)은 이미 구현됨 → **액션 버튼의 기반이 이미 있음**.
