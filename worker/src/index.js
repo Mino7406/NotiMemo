@@ -62,7 +62,7 @@ async function classify(request, env) {
     // JSON 모드를 만족하지 못한 경우 포함. 메모 내용은 로그에 남기지 않는다.
     throw new HttpError(502, 'ai_failed');
   }
-  return normalizeResult(result && result.response, input.now);
+  return normalizeResult(result && result.response, input.memo);
 }
 
 export default {
