@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/update_service.dart';
@@ -6,6 +7,7 @@ import '../storage/ai_storage.dart';
 import '../theme/app_theme.dart';
 import '../utils/reminder_time.dart';
 import '../widgets/app_dialogs.dart';
+import '../widgets/app_toast.dart';
 
 class SettingsScreen extends StatefulWidget {
   final ThemeMode currentMode;
@@ -230,6 +232,8 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
+const _contactEmail = 'rlaalsgh7406@gmail.com';
+
 class _AppInfoCard extends StatelessWidget {
   final bool isDark;
   final Color textColor;
@@ -310,6 +314,33 @@ class _AppInfoCard extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+            Divider(
+              height: 1,
+              thickness: 1,
+              indent: 16,
+              endIndent: 16,
+              color: dividerColor,
+            ),
+            _InfoRow(
+              label: '문의',
+              textColor: textColor,
+              subColor: subColor,
+              trailing: GestureDetector(
+                key: const Key('contact-email'),
+                onTap: () {
+                  Clipboard.setData(const ClipboardData(text: _contactEmail));
+                  showAppToast(context, '이메일 주소를 복사했어요.');
+                },
+                child: const Text(
+                  _contactEmail,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.gradStart,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ),
             Divider(

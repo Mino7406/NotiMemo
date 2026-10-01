@@ -123,18 +123,25 @@ void showUpdateDialog(BuildContext context, String version) {
   );
 }
 
-Future<bool> showRestoreConfirmDialog(BuildContext context, String memo) async {
+/// 알림 내역에서 다시 고정할 때 고르는 방식.
+enum RestoreChoice { now, schedule }
+
+/// 알림 내역의 메모를 다시 고정할 방법을 묻는다. 취소하면 null.
+Future<RestoreChoice?> showRestoreConfirmDialog(
+  BuildContext context,
+  String memo,
+) async {
   final isDark = Theme.of(context).brightness == Brightness.dark;
   final textColor = isDark ? Colors.white : const Color(0xFF111827);
   final subColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
 
-  final confirmed = await showDialog<bool>(
+  return showDialog<RestoreChoice>(
     context: context,
     builder: (ctx) => _AppDialog(
       icon: Icons.push_pin_rounded,
       title: '알림 재생성',
       body: [
-        Text('이 메모로 알림을 다시 고정할까요?', style: _bodyStyle(subColor)),
+        Text('이 메모를 언제 고정할까요?', style: _bodyStyle(subColor)),
         const SizedBox(height: 10),
         Container(
           width: double.infinity,
@@ -153,13 +160,15 @@ Future<bool> showRestoreConfirmDialog(BuildContext context, String memo) async {
         ),
       ],
       actions: (subColor) => [
-        _cancelButton(ctx, subColor, '취소', false),
-        const SizedBox(width: 8),
-        _confirmButton('재생성', () => Navigator.pop(ctx, true)),
+        _cancelButton(ctx, subColor, '취소'),
+        _confirmButton(
+          '예약해서 고정',
+          () => Navigator.pop(ctx, RestoreChoice.schedule),
+        ),
+        _confirmButton('바로 고정', () => Navigator.pop(ctx, RestoreChoice.now)),
       ],
     ),
   );
-  return confirmed ?? false;
 }
 
 /// AI 자동 정리를 처음 쓸 때 메모가 외부로 전송된다는 걸 알리고 동의를 받는다.

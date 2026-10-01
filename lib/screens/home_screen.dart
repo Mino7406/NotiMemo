@@ -8,6 +8,7 @@ import '../models/memo_entry.dart';
 import '../models/scheduled_note.dart';
 import '../storage/ai_storage.dart';
 import '../storage/memo_storage.dart';
+import '../storage/tutorial_storage.dart';
 import '../theme/app_theme.dart';
 import '../utils/analysis_labels.dart';
 import '../utils/due_parser.dart';
@@ -17,7 +18,7 @@ import '../utils/time_format.dart';
 import '../widgets/analysis_sheet.dart';
 import '../widgets/app_dialogs.dart';
 import '../widgets/app_drawer.dart';
-import 'faq_screen.dart';
+import 'tutorial_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/history_sheet.dart';
@@ -77,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _load();
+    _load().then((_) => _maybeShowTutorial());
     NotificationService.requestPermission();
     NotificationService.listenForChanges(_syncNotificationState);
     _checkUpdate();
@@ -114,6 +115,21 @@ class _HomeScreenState extends State<HomeScreen>
         _memoList = list;
       });
     }
+  }
+
+  /// 처음 설치한 사람에게만 튜토리얼을 보여준다. 이미 쓰던 흔적(히스토리·고정)이 있으면 조용히 본 것으로 친다.
+  Future<void> _maybeShowTutorial() async {
+    if (await TutorialStorage.getSeen() || !mounted) return;
+    if (_memoList.isNotEmpty ||
+        _pinnedIds.isNotEmpty ||
+        _scheduled.isNotEmpty) {
+      await TutorialStorage.setSeen();
+      return;
+    }
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const TutorialScreen(firstRun: true)),
+    );
   }
 
   Future<void> _load() async {
@@ -439,12 +455,16 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _restoreMemo(MemoEntry entry) async {
-    final confirmed = await showRestoreConfirmDialog(context, entry.memo);
-    if (!confirmed || !mounted) return;
+    final choice = await showRestoreConfirmDialog(context, entry.memo);
+    if (choice == null || !mounted) return;
 
     final permError = await NotificationService.ensurePermission();
     if (permError != null) {
       _toast(permError, isError: true);
+      return;
+    }
+    if (choice == RestoreChoice.schedule) {
+      await _scheduleExisting(entry);
       return;
     }
     try {
@@ -455,6 +475,27 @@ class _HomeScreenState extends State<HomeScreen>
       );
       setState(() => _pinnedIds = {..._pinnedIds, entry.id});
       _toast('알림이 다시 생성되었습니다!');
+    } catch (e) {
+      _toast('오류: $e', isError: true);
+    }
+  }
+
+  /// 알림 내역의 메모를 시각을 골라 예약 고정한다(분류·우선순위는 그대로 유지).
+  Future<void> _scheduleExisting(MemoEntry entry) async {
+    final at = await showScheduleSheet(context);
+    if (at == null || !mounted) return;
+    if (!at.isAfter(DateTime.now())) {
+      _toast('지금보다 이후 시각을 골라주세요.', isError: true);
+      return;
+    }
+    await _ensureExactAlarm();
+    try {
+      final scheduled = entry.copyWith(scheduledAt: at.millisecondsSinceEpoch);
+      await NotificationService.schedule(scheduled, at);
+      final updated = await _saveEntry(scheduled);
+      setState(() => _memoList = updated);
+      await _syncNotificationState();
+      _toast('${formatEntryTime(at.millisecondsSinceEpoch)}에 고정되도록 예약했어요.');
     } catch (e) {
       _toast('오류: $e', isError: true);
     }
@@ -485,9 +526,9 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ),
-        onFaq: () => Navigator.push(
+        onTutorial: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const FaqScreen()),
+          MaterialPageRoute(builder: (_) => const TutorialScreen()),
         ),
       ),
       body: SafeArea(

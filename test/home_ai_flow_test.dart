@@ -5,6 +5,7 @@ import 'package:notimemo/models/memo_entry.dart';
 import 'package:notimemo/screens/home_screen.dart';
 import 'package:notimemo/storage/ai_storage.dart';
 import 'package:notimemo/storage/memo_storage.dart';
+import 'package:notimemo/storage/tutorial_storage.dart';
 import 'package:notimemo/widgets/home_widgets.dart' show AppliedAnalysisChips;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -81,7 +82,10 @@ Future<void> tapAnalyze(WidgetTester tester) async {
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({'ai_consent': true});
+    SharedPreferences.setMockInitialValues({
+      'ai_consent': true,
+      'tutorial_seen': true,
+    });
     mockChannels();
   });
 
@@ -208,7 +212,7 @@ void main() {
 
   group('동의 흐름', () {
     homeTest('처음 누르면 동의 창: 동의하면 저장되고 분석이 이어진다', (tester) async {
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({'tutorial_seen': true});
       await openHome(tester);
       await typeMemo(tester, memo);
       await openMenu(tester);
@@ -227,7 +231,7 @@ void main() {
     });
 
     homeTest('AI 없이 사용을 고르면 거부가 저장되고 기본 분석 결과가 나온다', (tester) async {
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({'tutorial_seen': true});
       await openHome(tester);
       await typeMemo(tester, memo);
       await openMenu(tester);
@@ -245,7 +249,7 @@ void main() {
     });
 
     homeTest('동의 창을 닫으면 아무것도 저장되지 않고 분석도 하지 않는다', (tester) async {
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({'tutorial_seen': true});
       await openHome(tester);
       await typeMemo(tester, memo);
       await openMenu(tester);
@@ -258,13 +262,87 @@ void main() {
     });
 
     homeTest('거부한 뒤에는 다시 묻지 않고 기본 분석을 쓴다', (tester) async {
-      SharedPreferences.setMockInitialValues({'ai_consent': false});
+      SharedPreferences.setMockInitialValues({'ai_consent': false, 'tutorial_seen': true});
       await openHome(tester);
       await typeMemo(tester, memo);
       await tapAnalyze(tester);
       expect(find.textContaining('외부 서버로 전송'), findsNothing);
       expect(find.text('기본 분석'), findsOneWidget);
     });
+  });
+
+  group('튜토리얼', () {
+    homeTest('처음 설치하면 튜토리얼이 뜨고, 끝까지 넘기면 본 것으로 저장된다', (tester) async {
+      SharedPreferences.setMockInitialValues({'ai_consent': true});
+      await openHome(tester);
+      expect(find.text('메모를 알림창에 고정해요'), findsOneWidget);
+      for (var i = 0; i < 4; i++) {
+        await tester.tap(find.byKey(const Key('tutorial-next')));
+        await tester.pumpAndSettle();
+      }
+      expect(find.text('시작하기'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('tutorial-next')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('menu-button')), findsOneWidget);
+      expect(await TutorialStorage.getSeen(), isTrue);
+    });
+
+    homeTest('건너뛰기를 눌러도 본 것으로 저장된다', (tester) async {
+      SharedPreferences.setMockInitialValues({'ai_consent': true});
+      await openHome(tester);
+      await tester.tap(find.byKey(const Key('tutorial-skip')));
+      await tester.pumpAndSettle();
+      expect(find.text('메모를 알림창에 고정해요'), findsNothing);
+      expect(await TutorialStorage.getSeen(), isTrue);
+    });
+
+    homeTest('이미 쓰던 사용자(히스토리 있음)에게는 뜨지 않는다', (tester) async {
+      SharedPreferences.setMockInitialValues({'ai_consent': true});
+      await MemoStorage.saveList([MemoEntry(id: 'a', memo: '옛 메모', time: 1)]);
+      await openHome(tester);
+      expect(find.text('메모를 알림창에 고정해요'), findsNothing);
+      expect(await TutorialStorage.getSeen(), isTrue);
+    });
+
+    homeTest('메뉴의 튜토리얼로 다시 볼 수 있다', (tester) async {
+      await openHome(tester);
+      expect(find.text('메모를 알림창에 고정해요'), findsNothing);
+      await openMenu(tester);
+      await tester.tap(find.byKey(const Key('menu-tutorial')));
+      await tester.pumpAndSettle();
+      expect(find.text('메모를 알림창에 고정해요'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('tutorial-skip')));
+      await tester.pumpAndSettle();
+      expect(find.text('메모를 알림창에 고정해요'), findsNothing);
+    });
+  });
+
+  homeTest('알림 내역 재생성: 예약해서 고정을 고르면 예약 시트가 열린다', (tester) async {
+    await MemoStorage.saveList([MemoEntry(id: 'a', memo: '치과 예약', time: 1)]);
+    await openHome(tester);
+    await openMenu(tester);
+    await tester.tap(find.byKey(const Key('menu-history')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('치과 예약'));
+    await tester.pumpAndSettle();
+    expect(find.text('바로 고정'), findsOneWidget);
+    await tester.tap(find.text('예약해서 고정'));
+    await tester.pumpAndSettle();
+    expect(find.text('언제 고정할까요?'), findsOneWidget);
+  });
+
+  homeTest('알림 내역 재생성: 바로 고정을 고르면 알림이 바로 뜬다', (tester) async {
+    await MemoStorage.saveList([MemoEntry(id: 'a', memo: '치과 예약', time: 1)]);
+    await openHome(tester);
+    await openMenu(tester);
+    await tester.tap(find.byKey(const Key('menu-history')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('치과 예약'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('바로 고정'));
+    await tester.pumpAndSettle();
+    expect(shown.any((c) => c.method == 'show'), isTrue);
+    expect(find.text('언제 고정할까요?'), findsNothing);
   });
 }
 
