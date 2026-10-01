@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import '../services/notification_service.dart';
+import '../services/ocr_service.dart';
 import '../services/update_service.dart';
 import '../models/memo_entry.dart';
 import '../models/scheduled_note.dart';
 import '../storage/memo_storage.dart';
+import '../utils/ocr_text.dart';
 import '../utils/time_format.dart';
 import 'scheduled_screen.dart';
 import '../widgets/app_dialogs.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/history_sheet.dart';
 import '../widgets/home_widgets.dart';
+import '../widgets/photo_source_sheet.dart';
 import '../widgets/schedule_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -31,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen>
   final _controller = TextEditingController();
   List<MemoEntry> _memoList = [];
   bool _isPinning = false;
+  bool _isReadingPhoto = false;
   Set<String> _pinnedIds = {};
   List<ScheduledNote> _scheduled = [];
 
@@ -138,6 +142,33 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _toast(String msg, {bool isError = false}) =>
       showAppToast(context, msg, isError: isError);
+
+  /// 사진에서 글자를 읽어 입력창에 이어 붙인다. 고치고 고정/예약하는 건 사용자 몫이다.
+  Future<void> _readPhoto() async {
+    if (_isReadingPhoto) return;
+    final source = await showPhotoSourceSheet(context);
+    if (source == null || !mounted) return;
+    setState(() => _isReadingPhoto = true);
+    try {
+      final text = await OcrService.readFromPhoto(source);
+      if (!mounted || text == null) return; // null = 사용자가 사진 선택을 취소함
+      if (text.isEmpty) {
+        _toast('글자를 찾지 못했어요.', isError: true);
+        return;
+      }
+      final merged = appendRecognizedText(_controller.text, text);
+      _controller.value = TextEditingValue(
+        text: merged,
+        selection: TextSelection.collapsed(offset: merged.length),
+      );
+      MemoStorage.setCurrent(merged);
+      _toast('글자를 불러왔어요. 고친 뒤 고정해보세요.');
+    } catch (e) {
+      if (mounted) _toast('글자를 읽지 못했어요: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _isReadingPhoto = false);
+    }
+  }
 
   Future<void> _cancelNotification() async {
     if (!_hasActiveNotification) return;
@@ -348,6 +379,8 @@ class _HomeScreenState extends State<HomeScreen>
                         MemoStorage.setCurrent('');
                         setState(() => _editingId = null);
                       },
+                      onPhoto: _readPhoto,
+                      isReadingPhoto: _isReadingPhoto,
                     ),
                     const SizedBox(height: 14),
                     Row(

@@ -195,6 +195,10 @@ class InputCard extends StatefulWidget {
   final Color subColor;
   final VoidCallback onClear;
 
+  /// null이면 사진 버튼을 보여주지 않는다.
+  final VoidCallback? onPhoto;
+  final bool isReadingPhoto;
+
   const InputCard({
     super.key,
     required this.controller,
@@ -202,6 +206,8 @@ class InputCard extends StatefulWidget {
     required this.textColor,
     required this.subColor,
     required this.onClear,
+    this.onPhoto,
+    this.isReadingPhoto = false,
   });
 
   @override
@@ -310,7 +316,19 @@ class _InputCardState extends State<InputCard> {
           Positioned(
             top: 4,
             right: 4,
-            child: ClearButton(onTap: widget.onClear, subColor: widget.subColor),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.onPhoto != null)
+                  ClearButton(
+                    onTap: widget.isReadingPhoto ? () {} : widget.onPhoto!,
+                    subColor: widget.subColor,
+                    icon: Icons.photo_camera_outlined,
+                    loading: widget.isReadingPhoto,
+                  ),
+                ClearButton(onTap: widget.onClear, subColor: widget.subColor),
+              ],
+            ),
           ),
         ],
       ),
@@ -321,7 +339,15 @@ class _InputCardState extends State<InputCard> {
 class ClearButton extends StatefulWidget {
   final VoidCallback onTap;
   final Color subColor;
-  const ClearButton({super.key, required this.onTap, required this.subColor});
+  final IconData icon;
+  final bool loading;
+  const ClearButton({
+    super.key,
+    required this.onTap,
+    required this.subColor,
+    this.icon = Icons.close_rounded,
+    this.loading = false,
+  });
 
   @override
   State<ClearButton> createState() => _ClearButtonState();
@@ -344,7 +370,16 @@ class _ClearButtonState extends State<ClearButton> {
         duration: const Duration(milliseconds: 100),
         child: Padding(
           padding: const EdgeInsets.all(8),
-          child: Icon(Icons.close_rounded, size: 18, color: widget.subColor),
+          child: widget.loading
+              ? SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: widget.subColor,
+                  ),
+                )
+              : Icon(widget.icon, size: 18, color: widget.subColor),
         ),
       ),
     );

@@ -36,12 +36,15 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // 사진 글자 인식(OCR)용 한국어 모델. 플러그인은 compileOnly로만 선언해 앱에서 직접 포함해야 한다.
+    implementation("com.google.mlkit:text-recognition-korean:16.0.1")
 }
 
 flutter {

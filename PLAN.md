@@ -8,7 +8,7 @@
 2. 사용자는 한국어로 대화하고 앱은 한국어 UI다. 답변·커밋 메시지·주석은 한국어로 쓴다(기존 코드 스타일과 같음).
 3. 앱은 Flutter(Dart) + 네이티브 Kotlin 혼합이다. 알림·알람은 전부 네이티브, 화면은 Flutter.
 
-**현재 상태 한 줄 요약**: 멀티 메모, 알림 액션(지우기/수정), 예약 알림이 완성돼 실기기 확인까지 끝났고, **다음은 Phase 3-6 사진 OCR**이다.
+**현재 상태 한 줄 요약**: 멀티 메모, 알림 액션(수정/지우기), 예약 알림, 사진 OCR이 완성돼 실기기 확인까지 끝났고, **다음은 Phase 3-7 LLM 자동 분류**다.
 
 ### 파일 지도
 | 경로 | 역할 |
@@ -24,7 +24,8 @@
 | `lib/models/memo_entry.dart`, `scheduled_note.dart` | 메모 모델(옛 포맷 마이그레이션 포함), 예약 모델 |
 | `lib/storage/memo_storage.dart` | `shared_preferences` 접근 (히스토리, 임시 입력, 고정 id, 예약 목록) |
 | `lib/services/notification_service.dart` | MethodChannel 래퍼 |
-| `test/` | 모델·저장소·파싱 단위 테스트 (14개) |
+| `lib/services/ocr_service.dart`, `lib/utils/ocr_text.dart`, `lib/widgets/photo_source_sheet.dart` | 사진 OCR: 사진 선택+ML Kit 인식, 결과 텍스트 정리, 촬영/갤러리 선택 시트 |
+| `test/` | 모델·저장소·파싱·OCR 텍스트 정리 단위 테스트 (22개) |
 
 ### 데이터 규약 (가장 중요)
 - 고정된 메모의 유일한 저장소는 `flutter.pinned_notes`(JSON `[{id,memo,time}]`), 예약은 `flutter.scheduled_notes`(JSON `[{id,memo,at}]`). **둘 다 네이티브가 쓰고 Flutter는 읽기만 한다.** Flutter에서 직접 쓰지 말 것. 앱이 꺼져 있어도 지우기·재고정·예약 발동이 돼야 해서 네이티브가 소유한다.
@@ -50,18 +51,22 @@ Flutter → 네이티브: `show{id,memo,time}`, `cancel{id?}`(id 없으면 전�
 - 폰에 설치한 앱이 디버그 빌드면 애니메이션이 원래 덜 부드럽다. 부드러움 판단은 `flutter run --release -d <기기ID> --no-resident`로 한다(디버그·릴리스가 같은 debug 키로 서명돼 덮어써도 데이터가 유지됨).
 - 사용자는 Windows(PowerShell/Git Bash)를 쓴다. 경로에 OneDrive가 끼어 있어 폴더가 동기화 때문에 잠깐 안 보이는 일이 한 번 있었다.
 
-### 다음 작업: Phase 3-6 사진 OCR (설계는 아직 승인 전)
-- 목표: 카메라/갤러리에서 사진을 골라 글자를 읽고 **인식된 텍스트를 메모 입력창에 채워** 사용자가 고친 뒤 고정·예약하게 한다.
-- 계획된 도구: `google_mlkit_text_recognition`(온디바이스, 무료, 오프라인) + 이미지 선택 패키지(`image_picker` 등). 한국어 인식이 필요하면 ML Kit 한국어 스크립트 옵션을 확인할 것(라이브러리 문서를 확인하고 결정).
-- 붙일 자리: `home_screen.dart`의 입력 영역(`InputCard`)과 고정/예약 버튼 줄. 홈 화면은 **최소 변경** 원칙을 유지해왔다(입력창·고정 버튼은 그대로 두고 보조 버튼을 곁들임).
-- 확인·결정할 것: 카메라 권한 흐름(Android 13+), 새 의존성 추가에 따른 `pubspec.lock` 변경(위 주의사항 참고), 인식 결과가 길거나 비었을 때의 처리, 사진 원본은 저장하지 않기.
-- 그다음은 Phase 3-7(LLM 자동 분류)인데, **API 공급자와 키 관리 방식이 아직 미정**이라 사용자에게 물어야 한다. 키를 APK에 넣지 않는다는 원칙만 확정.
+### 다음 작업: Phase 3-7 LLM 자동 분류 (설계는 아직 승인 전)
+- 목표: 메모 → JSON `{category, priority, summary, dueTime?}`. `dueTime`이 추출되면 예약과 자동 연동("내일 3시에 ~" 입력이 곧 예약).
+- **API 공급자와 키 관리 방식이 아직 미정**이라 사용자에게 먼저 물어야 한다. **키를 APK에 넣지 않는다**는 원칙만 확정(중계 서버 방식 검토). 인터넷이 끊겨도 시연되도록 **키워드 규칙 기반 오프라인 폴백**을 둔다.
+- 데이터 모델은 이미 준비돼 있다: `MemoEntry`의 `category`, `priority`, `summary`, `scheduledAt`(사용 시작 전).
+
+### Phase 3-6 OCR에서 알아둘 것
+- 입력창 우상단 📷 버튼 → 촬영/갤러리 선택 → ML Kit **한국어** 인식 → 입력창에 이어 붙임(기존 글이 있으면 줄바꿈 후). 고치고 고정/예약하는 건 사용자 몫.
+- **한국어 모델은 플러그인이 `compileOnly`로만 선언**해서 `android/app/build.gradle.kts`에 `text-recognition-korean`을 직접 추가했다. 빼면 한글이 깨진다.
+- `android/app/proguard-rules.pro`의 `-dontwarn`은 release(R8) 빌드가 중국어·일본어 모델 누락으로 실패하지 않게 하는 규칙이다. release 빌드 성공 확인함.
+- 카메라·저장소 권한은 필요 없다(`image_picker`가 시스템 사진 선택기·카메라 앱을 호출). 사진 원본은 저장하지 않고 임시 파일은 인식 직후 지운다.
 
 ## 0. 목표
 "알림창에 메모 고정" 앱을 **여러 메모 · 예약 · 제로클릭 조작 · AI 자동 정리**까지 되는 앱으로 확장한다.
 발표 스토리: `입력(텍스트/사진) → AI가 분류·요약·시간 추출 → 알림에 고정/예약 → 알림창에서 바로 완료 처리`
 
-## 진행 현황 (2026-09-30 기준)
+## 진행 현황 (2026-10-01 기준)
 | 단계 | 상태 | 비고 |
 |---|---|---|
 | Phase 1-1 데이터 모델 확장 + 마이그레이션 | 완료 | `MemoEntry` 필드 확장, 옛 포맷 2종 호환 |
@@ -69,8 +74,8 @@ Flutter → 네이티브: `show{id,memo,time}`, `cancel{id?}`(id 없으면 전�
 | Phase 1-3 A. 멀티 메모 | 완료 | 실기기 확인 |
 | Phase 2-4 B. 알림 액션 버튼 | 완료 (사양 변경) | 아래 "결정 사항" 참고 |
 | Phase 2-5 C. 예약 알림 | 완료 (캘린더 뷰 제외) | 예약 목록은 리스트 형식 |
-| Phase 3-6 D. 사진 OCR | 미착수 | **다음 작업** |
-| Phase 3-7 E. LLM 자동 분류 | 미착수 | 공급자·키 관리 방식 미정 |
+| Phase 3-6 D. 사진 OCR | 완료 | 카메라/갤러리 → 한국어 인식 → 입력창, 실기기 확인 |
+| Phase 3-7 E. LLM 자동 분류 | 미착수 | **다음 작업**, 공급자·키 관리 방식 미정 |
 | Phase 4-8 F. 위젯 | 미착수 | 디자인·버튼 방식 미정 |
 
 모든 완료 항목은 실기기(갤럭시 SM F956N, Android 16)에서 동작 확인 후 `master`에 병합·푸시함.
