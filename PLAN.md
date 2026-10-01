@@ -8,7 +8,7 @@
 2. 사용자는 한국어로 대화하고 앱은 한국어 UI다. 답변·커밋 메시지·주석은 한국어로 쓴다(기존 코드 스타일과 같음).
 3. 앱은 Flutter(Dart) + 네이티브 Kotlin 혼합이다. 알림·알람은 전부 네이티브, 화면은 Flutter.
 
-**현재 상태 한 줄 요약**: 멀티 메모, 알림 액션(수정/지우기), 예약 알림, 사진 OCR이 완성돼 실기기 확인까지 끝났고, **Phase 3-7 LLM 자동 분류는 서버(Cloudflare Worker)가 배포됐고 다음은 앱 연동**이다.
+**현재 상태 한 줄 요약**: 멀티 메모, 알림 액션(수정/지우기), 예약 알림, 사진 OCR이 완성돼 실기기 확인까지 끝났고, **Phase 3-7 LLM 자동 분류는 서버와 앱 로직(1~3단계)이 끝났고 다음은 UI(동의 화면·✨ 버튼, 4~5단계)**다.
 
 ### 파일 지도
 | 경로 | 역할 |
@@ -59,8 +59,8 @@ Flutter → 네이티브: `show{id,memo,time}`, `cancel{id?}`(id 없으면 전�
 - 키를 잃어버리면 이후 업데이트를 배포할 수 없다. 키스토어와 비밀번호는 반드시 백업한다.
 - 이 키 도입 전에 v2.6.0을 받은 사용자는 **한 번 삭제 후 재설치**해야 업데이트된다.
 
-### Phase 3-7 LLM 자동 분류 — 서버 완료, 앱 연동이 다음 작업 (앱 설계는 아직 승인 전)
-**현재 상태**: Cloudflare Worker가 **배포돼 동작 중**이다 (`https://notimemo-ai.notimemo-ai.workers.dev`, 코드는 `worker/`). 앱은 아직 연결하지 않았다.
+### Phase 3-7 LLM 자동 분류 — 서버·앱 로직 완료, UI(4~5단계)가 다음 작업 (UI 설계는 아직 승인 전)
+**현재 상태**: Cloudflare Worker가 **배포돼 동작 중**이다 (`https://notimemo-ai.notimemo-ai.workers.dev`, 코드는 `worker/`). 앱 쪽 로직(시간 파서·폴백·호출부)은 끝났지만 **화면에는 아직 연결하지 않았다**.
 
 **방향(2026-10-01 확정)**: **Cloudflare Workers + Workers AI**. 사용자가 직접 설치해 쓰므로 앱이 Worker를 호출하고 Worker가 `env.AI`로 모델을 실행한다. **API 키가 없다**(APK에도 없음). 실패 시 규칙 기반 폴백, 최초 사용 시 개인정보 전송 동의, 설정에서 끄기.
 - **Gemini를 쓰지 않는 이유**: Gemini API 약관이 만 18세 이상만 허용하고 "18세 미만이 접속할 가능성이 큰 앱"을 금지하며, 무료 등급은 개인정보 제출을 금지하고 내용을 서비스 개선에 쓴다. 학교 친구(미성년) 대상 배포라 부적합. Workers AI는 고객 데이터를 학습에 쓰지 않고 자동 저장하지 않는다(Cloudflare 문서).
@@ -78,12 +78,12 @@ Flutter → 네이티브: `show{id,memo,time}`, `cancel{id?}`(id 없으면 전�
 - 프롬프트는 **예시를 user/assistant 대화로 보여주는 방식**이어야 한다(지시문만 길게 쓰면 모델이 빈 값으로 도망침). 카테고리 정의를 한 줄씩 넣으면 "청소→할일", "선물→쇼핑" 오분류가 사라졌다.
 - **테스트 함정**: Windows에서 `curl`에 한글을 명령행 인자로 넘기면 인코딩이 깨져 모델이 엉뚱한 결과를 낸다(이 때문에 한때 "모델 품질이 나쁘다"고 오판했다). 한글 본문은 Node `fetch`나 UTF-8 파일(`--data-binary @file`)로 보낸다.
 
-**앱 연동 계획(승인 필요)**
-1. 규칙 기반 한국어 시간 파서(Dart): "내일 3시", "금요일 오후 4시", "다음주 월요일 오전 9시", "10월 15일 2시", "3일 뒤", "오늘 밤 10시" 등 → `DateTime?`. 단위 테스트 필수.
-2. 규칙 기반 분류 폴백(키워드로 카테고리·우선순위).
-3. `AiClassifier`: Worker 호출(5초 제한, 설치별 `X-Device-Id`), 실패하면 폴백, 일일 호출 상한은 앱에서 기기당으로 제한.
-4. 동의 화면(최초 1회, 메모가 외부로 전송된다고 안내)과 설정의 끄기 스위치.
-5. 입력창의 ✨ 자동 정리 버튼 → 결과 시트(카테고리·우선순위·요약·예약 시각 제안) → 사용자가 확인하면 적용, 시각이 있으면 예약 시트에 미리 채움.
+**앱 연동 진행 (1~3단계 완료, 4~5단계 UI는 설계 승인과 실기기 확인이 필요)**
+1. ✅ **시간 파서** `lib/utils/due_parser.dart` — `parseDue(메모, 현재시각)` → `ParsedDue(at, hasTime)` 또는 null. 확실하지 않으면 null(잘못된 날짜·반복 일정 "매주"·"3시간"·"30쪽" 오탐 방지). 애매한 7~11시는 다른 날이면 오전, 오늘이면 아직 안 지난 쪽. 테스트 `test/due_parser_test.dart`.
+2. ✅ **키워드 폴백** `lib/utils/rule_classifier.dart` — `classifyByRules(메모, 현재시각)` → `MemoAnalysis`. 처음 보는 메모 기준 정확도 **약 70%**(키워드 방식의 한계, 틀려도 대부분 안전한 `기타`). 키워드를 더 늘려 맞추려 하면 과적합이므로 멈춘다. 글자 겹침 주의: 약속/예약의 "약", 운동화의 "운동", 재활용의 "재활", 돈까스의 "돈".
+3. ✅ **서버 호출부** `lib/services/ai_classifier.dart` — `AiClassifier().analyze(메모)`는 **예외를 던지지 않고** 항상 `MemoAnalysis`를 돌려준다. `source`가 ai/rules, rules면 `fallbackReason`(disabled·dailyLimit·offline·timeout·quotaExceeded·rateLimited·serverError)로 **이유**를 알린다. 동의(`AiStorage.getConsent()`가 true)한 경우에만 서버로 보내고, 설치별 무작위 `X-Device-Id`(`lib/storage/ai_storage.dart`), 기기당 하루 20회 상한, 500자 초과는 앞부분만 전송. 실제 서버와 한글 왕복 확인함. 테스트 `test/ai_classifier_test.dart`(가짜 통신).
+4. ⬜ **동의 화면 + 설정 스위치**: 최초 사용 시 "분류를 위해 메모가 외부 서버(Cloudflare)로 전송된다"고 안내하고 `AiStorage.setConsent(true/false)`. 설정 화면에서 끌 수 있어야 한다. 거부해도 폴백으로 ✨ 기능은 쓸 수 있다.
+5. ⬜ **입력창 ✨ 자동 정리 버튼** → 결과 시트(카테고리·우선순위·요약·예약 시각 제안, `fallbackReason`이 있으면 이유별 안내 문구) → 사용자가 확인하면 `MemoEntry`에 적용, 시각이 있으면 예약 시트에 미리 채움. 애매한 시각(7~11시)은 시트에서 사용자가 고칠 수 있어야 한다.
 - 데이터 모델은 준비돼 있다: `MemoEntry`의 `category`, `priority`, `summary`, `scheduledAt`(사용 시작 전).
 
 ### Phase 3-6 OCR에서 알아둘 것
@@ -105,7 +105,7 @@ Flutter → 네이티브: `show{id,memo,time}`, `cancel{id?}`(id 없으면 전�
 | Phase 2-4 B. 알림 액션 버튼 | 완료 (사양 변경) | 아래 "결정 사항" 참고 |
 | Phase 2-5 C. 예약 알림 | 완료 (캘린더 뷰 제외) | 예약 목록은 리스트 형식 |
 | Phase 3-6 D. 사진 OCR | 완료 | 카메라/갤러리 → 한국어 인식 → 입력창, 실기기 확인 |
-| Phase 3-7 E. LLM 자동 분류 | 서버 완료, 앱 연동 대기 | Cloudflare Workers AI 배포됨. **다음 작업은 앱 쪽**(시간 파서·폴백·동의·✨ 버튼) |
+| Phase 3-7 E. LLM 자동 분류 | 서버·앱 로직 완료, UI 대기 | Cloudflare Workers AI 배포됨, 시간 파서·폴백·호출부 완료. **다음은 4~5단계 UI**(동의 화면·✨ 버튼) |
 | Phase 4-8 F. 위젯 | 미착수 | 디자인·버튼 방식 미정 |
 
 모든 완료 항목은 실기기(갤럭시 SM F956N, Android 16)에서 동작 확인 후 `master`에 병합·푸시함.
