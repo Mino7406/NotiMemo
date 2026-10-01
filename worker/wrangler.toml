@@ -1,0 +1,21 @@
+name = "notimemo-ai"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# Workers AI. 별도 API 키가 필요 없다.
+[ai]
+binding = "AI"
+
+[vars]
+# 모델은 한국어 메모 샘플로 비교해 정한다 (PLAN.md 참고).
+MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+
+# 짧은 시간 폭주 방지용. 10초/60초 단위, 위치별 카운트라 정확한 집계는 아니다.
+# 무료 플랜에서 배포가 거절되면 이 블록을 지우면 된다(코드는 바인딩이 없어도 동작).
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 6
+  period = 60
