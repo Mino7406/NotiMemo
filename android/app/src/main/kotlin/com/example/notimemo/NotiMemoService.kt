@@ -202,8 +202,8 @@ class NotiMemoService : Service() {
             .setShowWhen(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setGroup(GROUP_KEY)
-            .addAction(0, "지우기", stopIntent)
             .addAction(editAction)
+            .addAction(0, "지우기", stopIntent)
             .setDeleteIntent(repostIntent)
             .build()
     }
