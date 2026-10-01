@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/update_service.dart';
+import '../storage/ai_storage.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_dialogs.dart';
 
 class SettingsScreen extends StatefulWidget {
   final ThemeMode currentMode;
@@ -21,12 +23,32 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   String _version = '';
   late ThemeMode _currentMode;
+  bool _aiOn = false;
 
   @override
   void initState() {
     super.initState();
     _currentMode = widget.currentMode;
     _loadVersion();
+    _loadAi();
+  }
+
+  Future<void> _loadAi() async {
+    final consent = await AiStorage.getConsent();
+    if (mounted) setState(() => _aiOn = consent == true);
+  }
+
+  /// 켤 때는 메모가 외부로 전송된다는 안내와 동의를 먼저 받는다. 끌 때는 바로 끈다.
+  Future<void> _toggleAi(bool on) async {
+    if (!on) {
+      await AiStorage.setConsent(false);
+      if (mounted) setState(() => _aiOn = false);
+      return;
+    }
+    final agreed = await showAiConsentDialog(context);
+    if (agreed == null || !mounted) return;
+    await AiStorage.setConsent(agreed);
+    if (mounted) setState(() => _aiOn = agreed);
   }
 
   Future<void> _loadVersion() async {
@@ -85,6 +107,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _ThemePicker(
                       currentMode: _currentMode,
                       onChanged: _changeTheme,
+                      isDark: isDark,
+                      textColor: textColor,
+                      subColor: subColor,
+                    ),
+                    const SizedBox(height: 24),
+                    _SectionLabel(label: 'AI 자동 정리', subColor: subColor),
+                    const SizedBox(height: 10),
+                    _AiSwitchCard(
+                      value: _aiOn,
+                      onChanged: _toggleAi,
                       isDark: isDark,
                       textColor: textColor,
                       subColor: subColor,
@@ -364,6 +396,69 @@ class _ThemePicker extends StatelessWidget {
             );
           }),
         ),
+      ),
+    );
+  }
+}
+
+/// AI 자동 정리를 켜고 끄는 카드. 꺼져 있어도 기본(오프라인) 분석은 쓸 수 있다.
+class _AiSwitchCard extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final bool isDark;
+  final Color textColor;
+  final Color subColor;
+
+  const _AiSwitchCard({
+    required this.value,
+    required this.onChanged,
+    required this.isDark,
+    required this.textColor,
+    required this.subColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppColors.borderDark : AppColors.borderLight,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'AI로 메모 정리하기',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value
+                      ? '✨ 버튼을 누르면 메모가 외부 서버(Cloudflare)로 전송돼요.'
+                      : '꺼져 있어요. 인터넷 없이 되는 기본 분석을 써요.',
+                  style: TextStyle(fontSize: 12.5, color: subColor, height: 1.45),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            key: const Key('ai-switch'),
+            value: value,
+            onChanged: onChanged,
+            activeThumbColor: AppColors.gradStart,
+          ),
+        ],
       ),
     );
   }

@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import '../models/memo_analysis.dart';
+import '../services/ai_classifier.dart';
 import '../services/notification_service.dart';
 import '../services/ocr_service.dart';
 import '../services/update_service.dart';
 import '../models/memo_entry.dart';
 import '../models/scheduled_note.dart';
+import '../storage/ai_storage.dart';
 import '../storage/memo_storage.dart';
+import '../utils/analysis_labels.dart';
 import '../utils/ocr_text.dart';
 import '../utils/time_format.dart';
 import 'scheduled_screen.dart';
+import '../widgets/analysis_sheet.dart';
 import '../widgets/app_dialogs.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/history_sheet.dart';
@@ -35,6 +40,11 @@ class _HomeScreenState extends State<HomeScreen>
   List<MemoEntry> _memoList = [];
   bool _isPinning = false;
   bool _isReadingPhoto = false;
+  bool _isAnalyzing = false;
+
+  /// 사용자가 "적용"한 자동 정리 결과와 그 대상 메모(공백 정리한 글). 메모가 바뀌면 무효.
+  MemoAnalysis? _analysis;
+  String? _analyzedMemo;
   Set<String> _pinnedIds = {};
   List<ScheduledNote> _scheduled = [];
 
@@ -120,14 +130,75 @@ class _HomeScreenState extends State<HomeScreen>
   /// 지금 입력한 메모를 고정/예약할 항목으로 만든다. 수정 중이면 같은 id를 유지한다.
   MemoEntry _entryFor(String memo) {
     final id = _editingId;
-    if (id == null) return MemoEntry.create(memo);
-    final existing = _memoList.where((e) => e.id == id).firstOrNull;
-    return existing?.copyWith(memo: memo) ??
-        MemoEntry(
-          id: id,
-          memo: memo,
-          time: DateTime.now().millisecondsSinceEpoch,
-        );
+    final MemoEntry base;
+    if (id == null) {
+      base = MemoEntry.create(memo);
+    } else {
+      final existing = _memoList.where((e) => e.id == id).firstOrNull;
+      base =
+          existing?.copyWith(memo: memo) ??
+          MemoEntry(
+            id: id,
+            memo: memo,
+            time: DateTime.now().millisecondsSinceEpoch,
+          );
+    }
+    return _withAnalysis(base, memo);
+  }
+
+  /// 적용해 둔 자동 정리 결과를 [entry]에 담는다(메모가 그대로일 때만).
+  MemoEntry _withAnalysis(MemoEntry entry, String memo) {
+    final a = _analysis;
+    if (a == null || _analyzedMemo != memo) return entry;
+    return entry.copyWith(
+      category: a.category,
+      priority: a.priority,
+      summary: a.summary.isEmpty ? null : a.summary,
+    );
+  }
+
+  void _clearAnalysis() {
+    _analysis = null;
+    _analyzedMemo = null;
+  }
+
+  /// ✨ 자동 정리: 동의 확인 → 분석(AI, 안 되면 기본) → 결과 시트 → 적용.
+  Future<void> _analyze() async {
+    if (_isAnalyzing) return;
+    final memo = _controller.text.trim();
+    if (memo.isEmpty) {
+      _toast('메모를 입력해주세요.', isError: true);
+      return;
+    }
+    if (await AiStorage.getConsent() == null) {
+      if (!mounted) return;
+      final answer = await showAiConsentDialog(context);
+      if (answer == null || !mounted) return; // 닫으면 아무것도 정하지 않는다.
+      await AiStorage.setConsent(answer);
+    }
+    setState(() => _isAnalyzing = true);
+    final MemoAnalysis analysis;
+    try {
+      analysis = await AiClassifier().analyze(memo);
+    } finally {
+      if (mounted) setState(() => _isAnalyzing = false);
+    }
+    if (!mounted) return;
+    if (_controller.text.trim() != memo) {
+      _toast('정리하는 동안 메모가 바뀌어 적용하지 않았어요.', isError: true);
+      return;
+    }
+    final decision = await showAnalysisSheet(context, analysis);
+    if (decision == null || !mounted) return;
+    setState(() {
+      _analysis = analysis;
+      _analyzedMemo = memo;
+    });
+    if (decision == AnalysisDecision.applyAndSchedule) {
+      await _scheduleNotification(initial: analysis.due?.at);
+    } else {
+      _toast('자동 정리를 적용했어요.');
+    }
   }
 
   /// [entry]를 히스토리 맨 앞에 두고(이미 있으면 그 자리를 갱신) 저장한다.
@@ -202,6 +273,7 @@ class _HomeScreenState extends State<HomeScreen>
         _memoList = updated;
         _pinnedIds = {..._pinnedIds, entry.id};
         _editingId = null;
+        _clearAnalysis();
       });
       await _syncNotificationState();
       _toast(wasEditing ? '알림이 수정되었습니다!' : '알림이 고정되었습니다!');
@@ -212,7 +284,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  Future<void> _scheduleNotification() async {
+  Future<void> _scheduleNotification({DateTime? initial}) async {
     final memo = _controller.text.trim();
     if (memo.isEmpty) {
       _toast('메모를 입력해주세요.', isError: true);
@@ -224,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
     if (!mounted) return;
-    final at = await showScheduleSheet(context);
+    final at = await showScheduleSheet(context, initial: initial);
     if (at == null || !mounted) return;
     if (!at.isAfter(DateTime.now())) {
       _toast('지금보다 이후 시각을 골라주세요.', isError: true);
@@ -242,6 +314,7 @@ class _HomeScreenState extends State<HomeScreen>
       setState(() {
         _memoList = updated;
         _editingId = null;
+        _clearAnalysis();
       });
       await _syncNotificationState();
       _toast('${formatEntryTime(at.millisecondsSinceEpoch)}에 고정되도록 예약했어요.');
@@ -377,10 +450,36 @@ class _HomeScreenState extends State<HomeScreen>
                       onClear: () {
                         _controller.clear();
                         MemoStorage.setCurrent('');
-                        setState(() => _editingId = null);
+                        setState(() {
+                          _editingId = null;
+                          _clearAnalysis();
+                        });
                       },
                       onPhoto: _readPhoto,
                       isReadingPhoto: _isReadingPhoto,
+                      onAnalyze: _analyze,
+                      isAnalyzing: _isAnalyzing,
+                    ),
+                    // 적용해 둔 자동 정리 결과(메모를 고치면 사라진다)
+                    ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: _controller,
+                      builder: (_, value, _) {
+                        final a = _analysis;
+                        if (a == null || _analyzedMemo != value.text.trim()) {
+                          return const SizedBox.shrink();
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: AppliedAnalysisChips(
+                            category: a.category,
+                            priorityLabel: priorityLabel(a.priority),
+                            isAi: a.source == AnalysisSource.ai,
+                            isDark: isDark,
+                            subColor: subColor,
+                            onRemove: () => setState(_clearAnalysis),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 14),
                     Row(

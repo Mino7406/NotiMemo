@@ -199,6 +199,10 @@ class InputCard extends StatefulWidget {
   final VoidCallback? onPhoto;
   final bool isReadingPhoto;
 
+  /// null이면 자동 정리(✨) 버튼을 보여주지 않는다.
+  final VoidCallback? onAnalyze;
+  final bool isAnalyzing;
+
   const InputCard({
     super.key,
     required this.controller,
@@ -208,6 +212,8 @@ class InputCard extends StatefulWidget {
     required this.onClear,
     this.onPhoto,
     this.isReadingPhoto = false,
+    this.onAnalyze,
+    this.isAnalyzing = false,
   });
 
   @override
@@ -319,6 +325,14 @@ class _InputCardState extends State<InputCard> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (widget.onAnalyze != null)
+                  ClearButton(
+                    key: const Key('analyze-button'),
+                    onTap: widget.isAnalyzing ? () {} : widget.onAnalyze!,
+                    subColor: widget.subColor,
+                    icon: Icons.auto_awesome_outlined,
+                    loading: widget.isAnalyzing,
+                  ),
                 if (widget.onPhoto != null)
                   ClearButton(
                     onTap: widget.isReadingPhoto ? () {} : widget.onPhoto!,
@@ -687,6 +701,66 @@ class _SquareIconButtonState extends State<SquareIconButton> {
             child: Icon(widget.icon, size: 24, color: AppColors.gradStart),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 자동 정리 결과가 이 메모에 적용돼 있음을 입력창 아래에 보여준다. ✕로 적용을 취소한다.
+class AppliedAnalysisChips extends StatelessWidget {
+  final String category;
+  final String priorityLabel;
+  final bool isAi;
+  final bool isDark;
+  final Color subColor;
+  final VoidCallback onRemove;
+
+  const AppliedAnalysisChips({
+    super.key,
+    required this.category,
+    required this.priorityLabel,
+    required this.isAi,
+    required this.isDark,
+    required this.subColor,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
+      decoration: BoxDecoration(
+        color: AppColors.gradStart.withAlpha(isDark ? 24 : 14),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.gradStart.withAlpha(isDark ? 60 : 45)),
+      ),
+      child: Row(
+        children: [
+          ShaderMask(
+            shaderCallback: (b) => AppColors.brandGradient.createShader(b),
+            child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 14),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$category · 우선순위 $priorityLabel · ${isAi ? 'AI' : '기본'} 분석 적용됨',
+              key: const Key('applied-analysis'),
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                color: AppColors.gradStart.withAlpha(isDark ? 220 : 200),
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: onRemove,
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Icon(Icons.close_rounded, size: 16, color: subColor),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -68,7 +68,12 @@ class _AppDialog extends StatelessWidget {
   }
 }
 
-Widget _cancelButton(BuildContext ctx, Color subColor, String label, [bool? result]) {
+Widget _cancelButton(
+  BuildContext ctx,
+  Color subColor,
+  String label, [
+  bool? result,
+]) {
   return TextButton(
     onPressed: () => Navigator.pop(ctx, result),
     style: TextButton.styleFrom(foregroundColor: subColor),
@@ -154,4 +159,58 @@ Future<bool> showRestoreConfirmDialog(BuildContext context, String memo) async {
     ),
   );
   return confirmed ?? false;
+}
+
+/// AI 자동 정리를 처음 쓸 때 메모가 외부로 전송된다는 걸 알리고 동의를 받는다.
+/// true = 동의하고 사용, false = AI 없이 사용(기본 분석), null = 닫음(아무것도 정하지 않음).
+Future<bool?> showAiConsentDialog(BuildContext context) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final textColor = isDark ? Colors.white : const Color(0xFF111827);
+  final subColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+
+  return showDialog<bool>(
+    context: context,
+    builder: (ctx) => _AppDialog(
+      icon: Icons.auto_awesome_rounded,
+      title: 'AI 자동 정리',
+      body: [
+        Text('메모를 분류하고 요약하려면 메모 내용이 외부 서버로 전송돼요.', style: _bodyStyle(subColor)),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.elevatedDark : const Color(0xFFF9FAFB),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDark ? AppColors.borderDark : AppColors.borderLight,
+            ),
+          ),
+          child: Text(
+            '• 전송되는 것: 메모 글자(최대 500자)와 이 앱 설치를 구분하는 무작위 번호\n'
+            '• 처리 서버: Cloudflare (AI 학습에 쓰이지 않고 저장되지 않아요)\n'
+            '• 비밀번호·계좌번호 같은 민감한 내용은 넣지 마세요\n'
+            '• 설정에서 언제든 끌 수 있어요',
+            style: TextStyle(fontSize: 13, color: textColor, height: 1.55),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          '동의하지 않아도 인터넷 없이 되는 기본 분석은 쓸 수 있어요.',
+          style: TextStyle(fontSize: 12.5, color: subColor, height: 1.5),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '참고: VPN을 쓰는 중이면 AI 분석이 안 될 수 있어요. VPN을 끄거나 이 앱을 VPN 제외 앱에 추가해 보세요.',
+          key: const Key('consent-note'),
+          style: TextStyle(fontSize: 12, color: subColor, height: 1.5),
+        ),
+      ],
+      actions: (sub) => [
+        _cancelButton(ctx, sub, 'AI 없이 사용', false),
+        const SizedBox(width: 8),
+        _confirmButton('동의하고 사용', () => Navigator.pop(ctx, true)),
+      ],
+    ),
+  );
 }

@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 /// 예약 시각을 고르는 하단 시트. 확인하면 고른 시각을, 닫으면 null을 돌려준다.
-Future<DateTime?> showScheduleSheet(BuildContext context) {
+/// [initial]을 주면 그 시각으로 미리 맞춰 둔다(미래이고 선택 범위 안일 때만, 아니면 기본값).
+Future<DateTime?> showScheduleSheet(BuildContext context, {DateTime? initial}) {
   return showModalBottomSheet<DateTime>(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    builder: (_) => const _ScheduleSheet(),
+    builder: (_) => _ScheduleSheet(initial: initial),
   );
 }
 
@@ -17,7 +18,8 @@ const _dayCount = 60;
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
 class _ScheduleSheet extends StatefulWidget {
-  const _ScheduleSheet();
+  final DateTime? initial;
+  const _ScheduleSheet({this.initial});
 
   @override
   State<_ScheduleSheet> createState() => _ScheduleSheetState();
@@ -27,15 +29,23 @@ class _ScheduleSheetState extends State<_ScheduleSheet> {
   static const _itemExtent = 44.0;
 
   late final DateTime _today = _dateOnly(DateTime.now());
-  late DateTime _selected = _initial();
+  late DateTime _selected = _initialSelection();
 
   late final _dayCtrl = FixedExtentScrollController(initialItem: _dayIndex);
   late final _ampmCtrl = FixedExtentScrollController(initialItem: _ampm);
   late final _hourCtrl = FixedExtentScrollController(initialItem: _hour12 - 1);
   late final _minCtrl = FixedExtentScrollController(initialItem: _selected.minute);
 
-  static DateTime _initial() {
-    final t = DateTime.now().add(const Duration(minutes: 10));
+  DateTime _initialSelection() {
+    final now = DateTime.now();
+    final wanted = widget.initial;
+    if (wanted != null && wanted.isAfter(now)) {
+      final days = _dateOnly(wanted).difference(_dateOnly(now)).inDays;
+      if (days < _dayCount) {
+        return DateTime(wanted.year, wanted.month, wanted.day, wanted.hour, wanted.minute);
+      }
+    }
+    final t = now.add(const Duration(minutes: 10));
     return DateTime(t.year, t.month, t.day, t.hour, t.minute);
   }
 

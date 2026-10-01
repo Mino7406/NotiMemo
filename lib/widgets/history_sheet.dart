@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/memo_entry.dart';
 import '../theme/app_theme.dart';
+import '../utils/analysis_labels.dart';
 import '../utils/time_format.dart';
 
 class HistorySheet extends StatefulWidget {
@@ -23,6 +24,11 @@ class HistorySheet extends StatefulWidget {
 
 class _HistorySheetState extends State<HistorySheet> {
   late List<MemoEntry> _list;
+
+  /// "학교" 또는 우선순위가 보통이 아니면 "학교 · 우선순위 높음".
+  String _labelFor(MemoEntry e) => e.priority == MemoPriority.normal
+      ? e.category!
+      : '${e.category} · 우선순위 ${priorityLabel(e.priority)}';
 
   @override
   void initState() {
@@ -196,6 +202,18 @@ class _HistorySheetState extends State<HistorySheet> {
                                       height: 1.45,
                                     ),
                                   ),
+                                  if (_list[i].category != null) ...[
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      _labelFor(_list[i]),
+                                      key: Key('history-label-${_list[i].id}'),
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.gradStart,
+                                      ),
+                                    ),
+                                  ],
                                   if (_list[i].time != 0) ...[
                                     const SizedBox(height: 2),
                                     Text(
