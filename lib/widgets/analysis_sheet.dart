@@ -3,6 +3,7 @@ import '../models/memo_analysis.dart';
 import '../models/memo_entry.dart';
 import '../theme/app_theme.dart';
 import '../utils/analysis_labels.dart';
+import '../utils/reminder_time.dart';
 
 /// 결과 시트에서 사용자가 고른 동작.
 enum AnalysisDecision {
@@ -16,19 +17,25 @@ enum AnalysisDecision {
 /// 자동 정리 결과를 보여주고 적용 여부를 묻는다. 닫으면 null.
 Future<AnalysisDecision?> showAnalysisSheet(
   BuildContext context,
-  MemoAnalysis analysis,
-) {
+  MemoAnalysis analysis, {
+  int leadMinutes = defaultLeadMinutes,
+}) {
   return showModalBottomSheet<AnalysisDecision>(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    builder: (_) => AnalysisSheet(analysis: analysis),
+    builder: (_) => AnalysisSheet(analysis: analysis, leadMinutes: leadMinutes),
   );
 }
 
 class AnalysisSheet extends StatelessWidget {
   final MemoAnalysis analysis;
-  const AnalysisSheet({super.key, required this.analysis});
+  final int leadMinutes;
+  const AnalysisSheet({
+    super.key,
+    required this.analysis,
+    this.leadMinutes = defaultLeadMinutes,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +44,10 @@ class AnalysisSheet extends StatelessWidget {
     final subColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     final bottomPad = MediaQuery.of(context).padding.bottom;
     final due = analysis.due;
+    final reminder = due == null
+        ? null
+        : suggestReminder(due, DateTime.now(), leadMinutes: leadMinutes);
+    final lead = reminder == null ? null : leadLabel(reminder.lead);
     final isAi = analysis.source == AnalysisSource.ai;
     final reason = analysis.fallbackReason;
 
@@ -144,6 +155,16 @@ class AnalysisSheet extends StatelessWidget {
                   color: textColor,
                 ),
               ),
+              if (due.hasTime && reminder != null && lead != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    '알림은 $lead(${formatDueLabel(reminder.remindAt)})으로 맞춰 드려요. '
+                    '다음 화면에서 고칠 수 있어요.',
+                    key: const Key('lead-text'),
+                    style: TextStyle(fontSize: 12, color: subColor),
+                  ),
+                ),
               if (!due.hasTime)
                 Padding(
                   padding: const EdgeInsets.only(top: 2),

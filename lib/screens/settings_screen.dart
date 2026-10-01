@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/update_service.dart';
 import '../storage/ai_storage.dart';
 import '../theme/app_theme.dart';
+import '../utils/reminder_time.dart';
 import '../widgets/app_dialogs.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -24,6 +25,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _version = '';
   late ThemeMode _currentMode;
   bool _aiOn = false;
+  bool _autoClassify = true;
+  int _leadMinutes = defaultLeadMinutes;
 
   @override
   void initState() {
@@ -35,7 +38,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadAi() async {
     final consent = await AiStorage.getConsent();
-    if (mounted) setState(() => _aiOn = consent == true);
+    final lead = await AiStorage.getLeadMinutes();
+    final classify = await AiStorage.getAutoClassify();
+    if (mounted) {
+      setState(() {
+        _aiOn = consent == true;
+        _leadMinutes = lead;
+        _autoClassify = classify;
+      });
+    }
+  }
+
+  Future<void> _setAutoClassify(bool on) async {
+    await AiStorage.setAutoClassify(on);
+    if (mounted) setState(() => _autoClassify = on);
+  }
+
+  Future<void> _setLead(int minutes) async {
+    await AiStorage.setLeadMinutes(minutes);
+    if (mounted) setState(() => _leadMinutes = minutes);
+  }
+
+  Future<void> _askCustomLead() async {
+    final minutes = await showLeadTimeDialog(
+      context,
+      initial: _leadMinutes,
+      max: AiStorage.maxLeadMinutes,
+    );
+    if (minutes != null) await _setLead(minutes);
   }
 
   /// 켤 때는 메모가 외부로 전송된다는 안내와 동의를 먼저 받는다. 끌 때는 바로 끈다.
@@ -112,15 +142,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       subColor: subColor,
                     ),
                     const SizedBox(height: 24),
-                    _SectionLabel(label: 'AI 자동 정리', subColor: subColor),
+                    _SectionLabel(label: 'AI 기능 켜기', subColor: subColor),
                     const SizedBox(height: 10),
                     _AiSwitchCard(
+                      switchKey: const Key('ai-switch'),
+                      title: 'AI로 메모 정리하기',
+                      onText: '✨ 버튼을 누르면 메모가 외부 서버(Cloudflare)로 전송돼요.',
+                      offText: '꺼져 있어요. 인터넷 없이 되는 기본 분석을 써요.',
                       value: _aiOn,
                       onChanged: _toggleAi,
                       isDark: isDark,
                       textColor: textColor,
                       subColor: subColor,
                     ),
+                    if (_aiOn) ...[
+                      const SizedBox(height: 24),
+                      _SectionLabel(label: 'AI 설정', subColor: subColor),
+                      const SizedBox(height: 10),
+                      _AiSwitchCard(
+                        switchKey: const Key('auto-classify-switch'),
+                        title: '자동 분류 시스템',
+                        onText: '메모의 카테고리·우선순위·요약을 자동으로 정리해요.',
+                        offText: '꺼져 있어요. ✨은 메모의 예약 시각만 찾고, 메모는 전송하지 않아요.',
+                        value: _autoClassify,
+                        onChanged: _setAutoClassify,
+                        isDark: isDark,
+                        textColor: textColor,
+                        subColor: subColor,
+                      ),
+                      const SizedBox(height: 10),
+                      _AiLeadCard(
+                        minutes: _leadMinutes,
+                        onSelect: _setLead,
+                        onCustom: _askCustomLead,
+                        isDark: isDark,
+                        textColor: textColor,
+                        subColor: subColor,
+                      ),
+                    ],
                     const SizedBox(height: 24),
                     _SectionLabel(label: '앱 정보', subColor: subColor),
                     const SizedBox(height: 10),
@@ -218,7 +277,13 @@ class _AppInfoCard extends StatelessWidget {
                 style: TextStyle(fontSize: 14, color: textColor),
               ),
             ),
-            Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: dividerColor),
+            Divider(
+              height: 1,
+              thickness: 1,
+              indent: 16,
+              endIndent: 16,
+              color: dividerColor,
+            ),
             _InfoRow(
               label: '버전',
               textColor: textColor,
@@ -247,7 +312,13 @@ class _AppInfoCard extends StatelessWidget {
                 ],
               ),
             ),
-            Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: dividerColor),
+            Divider(
+              height: 1,
+              thickness: 1,
+              indent: 16,
+              endIndent: 16,
+              color: dividerColor,
+            ),
             _InfoRow(
               label: '업데이트',
               textColor: textColor,
@@ -285,13 +356,7 @@ class _InfoRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 60,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                color: subColor,
-              ),
-            ),
+            child: Text(label, style: TextStyle(fontSize: 14, color: subColor)),
           ),
           Expanded(child: trailing),
         ],
@@ -316,7 +381,11 @@ class _ThemePicker extends StatelessWidget {
   });
 
   static const _options = [
-    (mode: ThemeMode.system, label: '시스템 기본', icon: Icons.brightness_auto_rounded),
+    (
+      mode: ThemeMode.system,
+      label: '시스템 기본',
+      icon: Icons.brightness_auto_rounded,
+    ),
     (mode: ThemeMode.light, label: '라이트', icon: Icons.light_mode_rounded),
     (mode: ThemeMode.dark, label: '다크', icon: Icons.dark_mode_rounded),
   ];
@@ -354,7 +423,9 @@ class _ThemePicker extends StatelessWidget {
                   onTap: () => onChanged(opt.mode),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 15),
+                      horizontal: 16,
+                      vertical: 15,
+                    ),
                     child: Row(
                       children: [
                         Icon(
@@ -378,8 +449,11 @@ class _ThemePicker extends StatelessWidget {
                           ShaderMask(
                             shaderCallback: (b) =>
                                 AppColors.brandGradient.createShader(b),
-                            child: const Icon(Icons.check_rounded,
-                                color: Colors.white, size: 18),
+                            child: const Icon(
+                              Icons.check_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
                           ),
                       ],
                     ),
@@ -390,7 +464,9 @@ class _ThemePicker extends StatelessWidget {
                     height: 1,
                     thickness: 1,
                     indent: 48,
-                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                    color: isDark
+                        ? AppColors.borderDark
+                        : AppColors.borderLight,
                   ),
               ],
             );
@@ -401,8 +477,12 @@ class _ThemePicker extends StatelessWidget {
   }
 }
 
-/// AI 자동 정리를 켜고 끄는 카드. 꺼져 있어도 기본(오프라인) 분석은 쓸 수 있다.
+/// 켜고 끄는 설정 카드(AI 기능, 자동 분류). 꺼져 있어도 기본(오프라인) 분석은 쓸 수 있다.
 class _AiSwitchCard extends StatelessWidget {
+  final Key switchKey;
+  final String title;
+  final String onText;
+  final String offText;
   final bool value;
   final ValueChanged<bool> onChanged;
   final bool isDark;
@@ -410,6 +490,10 @@ class _AiSwitchCard extends StatelessWidget {
   final Color subColor;
 
   const _AiSwitchCard({
+    required this.switchKey,
+    required this.title,
+    required this.onText,
+    required this.offText,
     required this.value,
     required this.onChanged,
     required this.isDark,
@@ -435,7 +519,7 @@ class _AiSwitchCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'AI로 메모 정리하기',
+                  title,
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -444,19 +528,108 @@ class _AiSwitchCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  value
-                      ? '✨ 버튼을 누르면 메모가 외부 서버(Cloudflare)로 전송돼요.'
-                      : '꺼져 있어요. 인터넷 없이 되는 기본 분석을 써요.',
-                  style: TextStyle(fontSize: 12.5, color: subColor, height: 1.45),
+                  value ? onText : offText,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: subColor,
+                    height: 1.45,
+                  ),
                 ),
               ],
             ),
           ),
           Switch(
-            key: const Key('ai-switch'),
+            key: switchKey,
             value: value,
             onChanged: onChanged,
             activeThumbColor: AppColors.gradStart,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// AI가 제안하는 예약 알림을 일정보다 얼마나 앞당길지 고르는 카드.
+class _AiLeadCard extends StatelessWidget {
+  static const _presets = [0, 5, 10, 30, 60, 120];
+
+  final int minutes;
+  final ValueChanged<int> onSelect;
+  final VoidCallback onCustom;
+  final bool isDark;
+  final Color textColor;
+  final Color subColor;
+
+  const _AiLeadCard({
+    required this.minutes,
+    required this.onSelect,
+    required this.onCustom,
+    required this.isDark,
+    required this.textColor,
+    required this.subColor,
+  });
+
+  static String _label(int m) =>
+      m == 0 ? '안 함' : leadLabel(Duration(minutes: m))!;
+
+  @override
+  Widget build(BuildContext context) {
+    final border = isDark ? AppColors.borderDark : AppColors.borderLight;
+    final isCustom = !_presets.contains(minutes);
+    Widget chip(String label, bool selected, VoidCallback onTap) => ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onTap(),
+      selectedColor: AppColors.gradStart.withAlpha(40),
+      side: BorderSide(color: selected ? AppColors.gradStart : border),
+      showCheckmark: false,
+      labelStyle: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: selected ? AppColors.gradStart : textColor,
+      ),
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '여유 시간',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            minutes == 0
+                ? 'AI가 찾은 일정 시각에 딱 맞춰 알려요.'
+                : 'AI가 찾은 일정 시각보다 ${_label(minutes)}에 알려요.',
+            style: TextStyle(fontSize: 12.5, color: subColor, height: 1.45),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final m in _presets)
+                chip(_label(m), minutes == m, () => onSelect(m)),
+              chip(
+                isCustom ? '직접: ${_label(minutes)}' : '직접 설정',
+                isCustom,
+                onCustom,
+              ),
+            ],
           ),
         ],
       ),

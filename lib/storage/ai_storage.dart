@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/reminder_time.dart';
 
 /// AI 자동 정리에 관한 설정과 사용량 저장소.
 class AiStorage {
@@ -7,6 +8,11 @@ class AiStorage {
   static const _keyDeviceId = 'ai_device_id';
   static const _keyUsageDate = 'ai_usage_date';
   static const _keyUsageCount = 'ai_usage_count';
+  static const _keyLeadMinutes = 'ai_lead_minutes';
+  static const _keyAutoClassify = 'ai_auto_classify';
+
+  /// 여유 시간으로 고를 수 있는 최댓값(분). 하루.
+  static const maxLeadMinutes = 1440;
 
   /// 동의 여부. null = 아직 묻지 않음, true = 동의(켬), false = 거부(끔).
   static Future<bool?> getConsent() async {
@@ -50,5 +56,30 @@ class AiStorage {
         : 0;
     await prefs.setString(_keyUsageDate, today);
     await prefs.setInt(_keyUsageCount, count + 1);
+  }
+
+  /// AI가 제안하는 알림 시각을 일정보다 몇 분 앞당길지. 0이면 일정 시각 그대로.
+  static Future<int> getLeadMinutes() async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getInt(_keyLeadMinutes) ?? defaultLeadMinutes).clamp(
+      0,
+      maxLeadMinutes,
+    );
+  }
+
+  static Future<void> setLeadMinutes(int minutes) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyLeadMinutes, minutes.clamp(0, maxLeadMinutes));
+  }
+
+  /// 자동 분류(카테고리·우선순위·요약) 사용 여부. 기본 켜짐. 끄면 ✨은 예약 시각만 찾는다.
+  static Future<bool> getAutoClassify() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyAutoClassify) ?? true;
+  }
+
+  static Future<void> setAutoClassify(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyAutoClassify, value);
   }
 }

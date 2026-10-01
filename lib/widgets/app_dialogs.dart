@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/update_service.dart';
 import '../theme/app_theme.dart';
@@ -213,4 +214,133 @@ Future<bool?> showAiConsentDialog(BuildContext context) {
       ],
     ),
   );
+}
+
+/// 예약 알림 여유 시간(분)을 직접 입력받는다. 확인하면 분, 취소하면 null.
+Future<int?> showLeadTimeDialog(
+  BuildContext context, {
+  required int initial,
+  required int max,
+}) {
+  return showDialog<int>(
+    context: context,
+    builder: (_) => _LeadTimeDialog(initial: initial, max: max),
+  );
+}
+
+class _LeadTimeDialog extends StatefulWidget {
+  final int initial;
+  final int max;
+  const _LeadTimeDialog({required this.initial, required this.max});
+
+  @override
+  State<_LeadTimeDialog> createState() => _LeadTimeDialogState();
+}
+
+class _LeadTimeDialogState extends State<_LeadTimeDialog> {
+  late final _ctrl = TextEditingController(text: '${widget.initial}');
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  int? get _value {
+    final v = int.tryParse(_ctrl.text);
+    return v != null && v <= widget.max ? v : null;
+  }
+
+  void _submit() {
+    final v = _value;
+    if (v != null) Navigator.pop(context, v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final border = isDark ? AppColors.borderDark : AppColors.borderLight;
+    final err = Theme.of(context).colorScheme.error;
+    final bad = _ctrl.text.isNotEmpty && _value == null;
+
+    return _AppDialog(
+      icon: Icons.schedule_rounded,
+      title: '여유 시간 직접 설정',
+      body: [
+        Text(
+          '일정 시각보다 몇 분 앞서 알릴지 정해요. 0이면 일정 시각에 딱 맞춰 알려요.',
+          style: _bodyStyle(
+            isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 96,
+              child: TextField(
+                controller: _ctrl,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                textAlign: TextAlign.center,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
+                ],
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w500,
+                ),
+                onChanged: (_) => setState(() {}),
+                onSubmitted: (_) => _submit(),
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: bad ? err : border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: bad ? err : AppColors.gradStart,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              '분 전',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: textColor,
+              ),
+            ),
+          ],
+        ),
+        if (bad)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Center(
+              child: Text(
+                '0~${widget.max}분 사이로 입력하세요',
+                style: TextStyle(fontSize: 12.5, color: err),
+              ),
+            ),
+          ),
+      ],
+      actions: (subColor) => [
+        _cancelButton(context, subColor, '취소'),
+        _confirmButton('확인', _submit),
+      ],
+    );
+  }
 }
