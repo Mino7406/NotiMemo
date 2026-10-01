@@ -8,16 +8,22 @@ import '../models/memo_entry.dart';
 import '../models/scheduled_note.dart';
 import '../storage/ai_storage.dart';
 import '../storage/memo_storage.dart';
+import '../theme/app_theme.dart';
 import '../utils/analysis_labels.dart';
+import '../utils/due_parser.dart';
 import '../utils/ocr_text.dart';
+import '../utils/reminder_time.dart';
 import '../utils/time_format.dart';
-import 'scheduled_screen.dart';
 import '../widgets/analysis_sheet.dart';
 import '../widgets/app_dialogs.dart';
+import '../widgets/app_drawer.dart';
+import 'faq_screen.dart';
+import 'settings_screen.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/history_sheet.dart';
 import '../widgets/home_widgets.dart';
 import '../widgets/photo_source_sheet.dart';
+import '../widgets/scheduled_sheet.dart';
 import '../widgets/schedule_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -43,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool _isAnalyzing = false;
 
   /// 사용자가 "적용"한 자동 정리 결과와 그 대상 메모(공백 정리한 글). 메모가 바뀌면 무효.
+  final _inputFocus = FocusNode();
   MemoAnalysis? _analysis;
   String? _analyzedMemo;
   Set<String> _pinnedIds = {};
@@ -57,8 +64,10 @@ class _HomeScreenState extends State<HomeScreen>
     vsync: this,
     duration: const Duration(milliseconds: 900),
   );
-  late final Animation<double> _fadeAnim =
-      CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+  late final Animation<double> _fadeAnim = CurvedAnimation(
+    parent: _animCtrl,
+    curve: Curves.easeOut,
+  );
   late final Animation<Offset> _slideAnim = Tween<Offset>(
     begin: const Offset(0, 0.04),
     end: Offset.zero,
@@ -80,6 +89,7 @@ class _HomeScreenState extends State<HomeScreen>
     _animCtrl.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
+    _inputFocus.dispose();
     super.dispose();
   }
 
@@ -167,7 +177,13 @@ class _HomeScreenState extends State<HomeScreen>
     if (_isAnalyzing) return;
     final memo = _controller.text.trim();
     if (memo.isEmpty) {
-      _toast('메모를 입력해주세요.', isError: true);
+      _askForMemo();
+      return;
+    }
+    // AI를 켰지만 자동 분류를 끈 경우: 분류·요약 없이 메모의 예약 시각만 찾는다(서버 전송 없음).
+    if (await AiStorage.getConsent() == true &&
+        !await AiStorage.getAutoClassify()) {
+      await _suggestTimeOnly(memo);
       return;
     }
     if (await AiStorage.getConsent() == null) {
@@ -188,17 +204,50 @@ class _HomeScreenState extends State<HomeScreen>
       _toast('정리하는 동안 메모가 바뀌어 적용하지 않았어요.', isError: true);
       return;
     }
-    final decision = await showAnalysisSheet(context, analysis);
+    final leadMinutes = await AiStorage.getLeadMinutes();
+    if (!mounted) return;
+    final decision = await showAnalysisSheet(
+      context,
+      analysis,
+      leadMinutes: leadMinutes,
+    );
     if (decision == null || !mounted) return;
     setState(() {
       _analysis = analysis;
       _analyzedMemo = memo;
     });
     if (decision == AnalysisDecision.applyAndSchedule) {
-      await _scheduleNotification(initial: analysis.due?.at);
+      final due = analysis.due;
+      await _scheduleNotification(
+        initial: due == null
+            ? null
+            : suggestReminder(
+                due,
+                DateTime.now(),
+                leadMinutes: leadMinutes,
+              ).remindAt,
+      );
     } else {
       _toast('자동 정리를 적용했어요.');
     }
+  }
+
+  /// 자동 분류를 끈 ✨: 메모에서 시각만 찾아 여유 시간을 뺀 값으로 예약 시트를 연다.
+  Future<void> _suggestTimeOnly(String memo) async {
+    final due = parseDue(memo, DateTime.now());
+    if (due == null) {
+      _toast('메모에서 예약 시각을 찾지 못했어요.', isError: true);
+      return;
+    }
+    final leadMinutes = await AiStorage.getLeadMinutes();
+    if (!mounted) return;
+    await _scheduleNotification(
+      initial: suggestReminder(
+        due,
+        DateTime.now(),
+        leadMinutes: leadMinutes,
+      ).remindAt,
+    );
   }
 
   /// [entry]를 히스토리 맨 앞에 두고(이미 있으면 그 자리를 갱신) 저장한다.
@@ -251,7 +300,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _createNotification() async {
     final memo = _controller.text.trim();
     if (memo.isEmpty) {
-      _toast('메모를 입력해주세요.', isError: true);
+      _askForMemo();
       return;
     }
     final permError = await NotificationService.ensurePermission();
@@ -287,7 +336,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _scheduleNotification({DateTime? initial}) async {
     final memo = _controller.text.trim();
     if (memo.isEmpty) {
-      _toast('메모를 입력해주세요.', isError: true);
+      _askForMemo();
       return;
     }
     final permError = await NotificationService.ensurePermission();
@@ -304,9 +353,9 @@ class _HomeScreenState extends State<HomeScreen>
     }
     await _ensureExactAlarm();
     try {
-      final entry = _entryFor(memo).copyWith(
-        scheduledAt: at.millisecondsSinceEpoch,
-      );
+      final entry = _entryFor(
+        memo,
+      ).copyWith(scheduledAt: at.millisecondsSinceEpoch);
       await NotificationService.schedule(entry, at);
       final updated = await _saveEntry(entry);
       _controller.clear();
@@ -323,6 +372,15 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  /// 메모가 비어 있을 때: 안내하고 입력창에 포커스를 줘서 바로 입력할 수 있게 한다.
+  /// 메뉴가 닫히는 동안에는 포커스가 돌아가 버려서 조금 기다렸다가 준다.
+  void _askForMemo() {
+    _toast('메모를 입력해주세요.', isError: true);
+    Future<void>.delayed(const Duration(milliseconds: 320), () {
+      if (mounted) _inputFocus.requestFocus();
+    });
+  }
+
   /// 정확한 알람 권한이 없으면 안내하고 설정 화면을 열어준다. 거절해도 예약은 계속한다(정확도가 낮아짐).
   Future<void> _ensureExactAlarm() async {
     if (await NotificationService.canScheduleExact() || !mounted) return;
@@ -336,11 +394,13 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('나중에')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('나중에'),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('설정 열기')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('설정 열기'),
+          ),
         ],
       ),
     );
@@ -348,10 +408,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _openScheduled() async {
-    final picked = await Navigator.push<ScheduledNote>(
-      context,
-      MaterialPageRoute(builder: (_) => const ScheduledScreen()),
-    );
+    final picked = await showScheduledSheet(context);
     await _syncNotificationState();
     if (picked == null || !mounted) return;
     await NotificationService.cancelSchedule(picked.id);
@@ -394,7 +451,8 @@ class _HomeScreenState extends State<HomeScreen>
       // 옛 포맷에서 온 기록은 time이 0이라, 다시 고정하는 시각으로 표시한다.
       final now = DateTime.now().millisecondsSinceEpoch;
       await NotificationService.show(
-          MemoEntry(id: entry.id, memo: entry.memo, time: now));
+        MemoEntry(id: entry.id, memo: entry.memo, time: now),
+      );
       setState(() => _pinnedIds = {..._pinnedIds, entry.id});
       _toast('알림이 다시 생성되었습니다!');
     } catch (e) {
@@ -409,134 +467,131 @@ class _HomeScreenState extends State<HomeScreen>
     final subColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
 
     return Scaffold(
+      endDrawer: AppMenuDrawer(
+        scheduledCount: _scheduled.length,
+        historyCount: _memoList.length,
+        isBusy: _isAnalyzing || _isReadingPhoto,
+        onAnalyze: _analyze,
+        onPhoto: _readPhoto,
+        onSchedule: _scheduleNotification,
+        onScheduledList: _openScheduled,
+        onHistory: _showHistory,
+        onSettings: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SettingsScreen(
+              currentMode: widget.currentMode,
+              onThemeChanged: widget.onThemeChanged,
+            ),
+          ),
+        ),
+        onFaq: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const FaqScreen()),
+        ),
+      ),
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnim,
           child: SlideTransition(
             position: _slideAnim,
             child: Column(
-          children: [
-            TopBar(
-              subColor: subColor,
-              textColor: textColor,
-              currentMode: widget.currentMode,
-              onThemeChanged: widget.onThemeChanged,
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    HeroText(textColor: textColor, subColor: subColor),
-                    const SizedBox(height: 24),
-                    AnimatedSize(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeInOut,
-                      child: _hasActiveNotification
-                          ? Column(
-                              children: [
-                                ActiveBanner(isDark: isDark, count: _pinnedIds.length),
-                                const SizedBox(height: 10),
-                              ],
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                    InputCard(
-                      controller: _controller,
-                      isDark: isDark,
-                      textColor: textColor,
-                      subColor: subColor,
-                      onClear: () {
-                        _controller.clear();
-                        MemoStorage.setCurrent('');
-                        setState(() {
-                          _editingId = null;
-                          _clearAnalysis();
-                        });
-                      },
-                      onPhoto: _readPhoto,
-                      isReadingPhoto: _isReadingPhoto,
-                      onAnalyze: _analyze,
-                      isAnalyzing: _isAnalyzing,
-                    ),
-                    // 적용해 둔 자동 정리 결과(메모를 고치면 사라진다)
-                    ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: _controller,
-                      builder: (_, value, _) {
-                        final a = _analysis;
-                        if (a == null || _analyzedMemo != value.text.trim()) {
-                          return const SizedBox.shrink();
-                        }
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 10),
-                          child: AppliedAnalysisChips(
-                            category: a.category,
-                            priorityLabel: priorityLabel(a.priority),
-                            isAi: a.source == AnalysisSource.ai,
-                            isDark: isDark,
-                            subColor: subColor,
-                            onRemove: () => setState(_clearAnalysis),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
+              children: [
+                TopBar(subColor: subColor, textColor: textColor),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: PinButton(
-                            isPinning: _isPinning,
-                            onTap: _createNotification,
-                          ),
+                        HeroText(textColor: textColor, subColor: subColor),
+                        const SizedBox(height: 24),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeInOut,
+                          child: _hasActiveNotification
+                              ? Column(
+                                  children: [
+                                    ActiveBanner(
+                                      isDark: isDark,
+                                      count: _pinnedIds.length,
+                                    ),
+                                    const SizedBox(height: 10),
+                                  ],
+                                )
+                              : const SizedBox.shrink(),
                         ),
-                        const SizedBox(width: 10),
-                        SquareIconButton(
-                          icon: Icons.schedule_rounded,
-                          tooltip: '예약 고정',
+                        InputCard(
+                          controller: _controller,
+                          focusNode: _inputFocus,
+                          onAnalyze: _analyze,
+                          isAnalyzing: _isAnalyzing,
+                          onSchedule: _scheduleNotification,
                           isDark: isDark,
-                          onTap: _scheduleNotification,
+                          textColor: textColor,
+                          subColor: subColor,
+                          onClear: () {
+                            _controller.clear();
+                            MemoStorage.setCurrent('');
+                            setState(() {
+                              _editingId = null;
+                              _clearAnalysis();
+                            });
+                          },
                         ),
+                        if (_isAnalyzing || _isReadingPhoto)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: const LinearProgressIndicator(
+                                key: Key('busy-indicator'),
+                                minHeight: 3,
+                                color: AppColors.gradStart,
+                              ),
+                            ),
+                          ),
+                        // 적용해 둔 자동 정리 결과(메모를 고치면 사라진다)
+                        ValueListenableBuilder<TextEditingValue>(
+                          valueListenable: _controller,
+                          builder: (_, value, _) {
+                            final a = _analysis;
+                            if (a == null ||
+                                _analyzedMemo != value.text.trim()) {
+                              return const SizedBox.shrink();
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 10),
+                              child: AppliedAnalysisChips(
+                                category: a.category,
+                                priorityLabel: priorityLabel(a.priority),
+                                isAi: a.source == AnalysisSource.ai,
+                                isDark: isDark,
+                                subColor: subColor,
+                                onRemove: () => setState(_clearAnalysis),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        PinButton(
+                          isPinning: _isPinning,
+                          onTap: _createNotification,
+                        ),
+                        const SizedBox(height: 10),
+                        CancelButton(
+                          isDark: isDark,
+                          isActive: _hasActiveNotification,
+                          label: _pinnedIds.length > 1 ? '모두 지우기' : '알림 지우기',
+                          onTap: _cancelNotification,
+                        ),
+                        const SizedBox(height: 20),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    HistoryButton(
-                      label: '예약 목록',
-                      icon: Icons.event_note_rounded,
-                      count: _scheduled.length,
-                      isDark: isDark,
-                      subColor: subColor,
-                      onTap: _openScheduled,
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: CancelButton(
-                            isDark: isDark,
-                            isActive: _hasActiveNotification,
-                            label: _pinnedIds.length > 1 ? '모두 지우기' : '알림 지우기',
-                            onTap: _cancelNotification,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: HistoryButton(
-                            count: _memoList.length,
-                            isDark: isDark,
-                            subColor: subColor,
-                            onTap: _showHistory,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
           ),
         ),
       ),

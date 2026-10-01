@@ -25,11 +25,6 @@ class HistorySheet extends StatefulWidget {
 class _HistorySheetState extends State<HistorySheet> {
   late List<MemoEntry> _list;
 
-  /// "학교" 또는 우선순위가 보통이 아니면 "학교 · 우선순위 높음".
-  String _labelFor(MemoEntry e) => e.priority == MemoPriority.normal
-      ? e.category!
-      : '${e.category} · 우선순위 ${priorityLabel(e.priority)}';
-
   @override
   void initState() {
     super.initState();
@@ -80,7 +75,10 @@ class _HistorySheetState extends State<HistorySheet> {
                 if (_list.isNotEmpty) ...[
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       gradient: AppColors.brandGradient,
                       borderRadius: BorderRadius.circular(20),
@@ -104,11 +102,17 @@ class _HistorySheetState extends State<HistorySheet> {
                     },
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.danger,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                     ),
                     child: const Text(
                       '전체삭제',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
               ],
@@ -154,14 +158,20 @@ class _HistorySheetState extends State<HistorySheet> {
                       color: AppColors.danger.withAlpha(200),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.delete_rounded, color: Colors.white, size: 20),
+                    child: const Icon(
+                      Icons.delete_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
                   onDismissed: (_) async {
                     await widget.onDelete(i);
                     setState(() => _list.removeAt(i));
                   },
                   child: Material(
-                    color: isDark ? AppColors.elevatedDark : const Color(0xFFF9FAFB),
+                    color: isDark
+                        ? AppColors.elevatedDark
+                        : const Color(0xFFF9FAFB),
                     borderRadius: BorderRadius.circular(12),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(12),
@@ -175,7 +185,9 @@ class _HistorySheetState extends State<HistorySheet> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                            color: isDark
+                                ? AppColors.borderDark
+                                : AppColors.borderLight,
                           ),
                         ),
                         child: Row(
@@ -194,26 +206,26 @@ class _HistorySheetState extends State<HistorySheet> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    _list[i].memo,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: textColor,
-                                      height: 1.45,
-                                    ),
-                                  ),
-                                  if (_list[i].category != null) ...[
-                                    const SizedBox(height: 3),
+                                  if (classLabel(_list[i]) != null) ...[
                                     Text(
-                                      _labelFor(_list[i]),
+                                      classLabel(_list[i])!,
                                       key: Key('history-label-${_list[i].id}'),
                                       style: const TextStyle(
-                                        fontSize: 11.5,
+                                        fontSize: 11,
                                         fontWeight: FontWeight.w600,
                                         color: AppColors.gradStart,
                                       ),
                                     ),
+                                    const SizedBox(height: 4),
                                   ],
+                                  Text(
+                                    _list[i].memo,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: textColor,
+                                      height: 1.45,
+                                    ),
+                                  ),
                                   if (_list[i].time != 0) ...[
                                     const SizedBox(height: 2),
                                     Text(
@@ -227,18 +239,27 @@ class _HistorySheetState extends State<HistorySheet> {
                                 ],
                               ),
                             ),
-                            Icon(Icons.replay_rounded, size: 14, color: subColor.withAlpha(120)),
+                            Icon(
+                              Icons.replay_rounded,
+                              size: 14,
+                              color: subColor.withAlpha(120),
+                            ),
                             const SizedBox(width: 2),
                             IconButton(
-                              icon: Icon(Icons.close_rounded,
-                                  size: 18, color: subColor),
+                              icon: Icon(
+                                Icons.close_rounded,
+                                size: 18,
+                                color: subColor,
+                              ),
                               onPressed: () async {
                                 await widget.onDelete(i);
                                 setState(() => _list.removeAt(i));
                               },
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(
-                                  minWidth: 32, minHeight: 32),
+                                minWidth: 32,
+                                minHeight: 32,
+                              ),
                             ),
                           ],
                         ),

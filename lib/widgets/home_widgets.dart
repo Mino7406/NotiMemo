@@ -1,22 +1,12 @@
 import 'package:flutter/material.dart';
-import '../screens/faq_screen.dart';
-import '../screens/settings_screen.dart';
 import '../storage/memo_storage.dart';
 import '../theme/app_theme.dart';
 
 class TopBar extends StatelessWidget {
   final Color textColor;
   final Color subColor;
-  final ThemeMode currentMode;
-  final void Function(ThemeMode) onThemeChanged;
 
-  const TopBar({
-    super.key,
-    required this.textColor,
-    required this.subColor,
-    required this.currentMode,
-    required this.onThemeChanged,
-  });
+  const TopBar({super.key, required this.textColor, required this.subColor});
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +21,11 @@ class TopBar extends StatelessWidget {
               gradient: AppColors.brandGradient,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.push_pin_rounded, color: Colors.white, size: 17),
+            child: const Icon(
+              Icons.push_pin_rounded,
+              color: Colors.white,
+              size: 17,
+            ),
           ),
           const SizedBox(width: 10),
           Text(
@@ -45,25 +39,10 @@ class TopBar extends StatelessWidget {
           ),
           const Spacer(),
           AnimatedIconButton(
-            icon: Icons.help_outline_rounded,
+            key: const Key('menu-button'),
+            icon: Icons.menu_rounded,
             color: subColor,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const FaqScreen()),
-            ),
-          ),
-          AnimatedIconButton(
-            icon: Icons.settings_outlined,
-            color: subColor,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => SettingsScreen(
-                  currentMode: currentMode,
-                  onThemeChanged: onThemeChanged,
-                ),
-              ),
-            ),
+            onTap: () => Scaffold.of(context).openEndDrawer(),
           ),
         ],
       ),
@@ -132,7 +111,11 @@ class ActiveBanner extends StatelessWidget {
         children: [
           ShaderMask(
             shaderCallback: (b) => AppColors.brandGradient.createShader(b),
-            child: const Icon(Icons.push_pin_rounded, color: Colors.white, size: 14),
+            child: const Icon(
+              Icons.push_pin_rounded,
+              color: Colors.white,
+              size: 14,
+            ),
           ),
           const SizedBox(width: 8),
           Text(
@@ -195,13 +178,13 @@ class InputCard extends StatefulWidget {
   final Color subColor;
   final VoidCallback onClear;
 
-  /// null이면 사진 버튼을 보여주지 않는다.
-  final VoidCallback? onPhoto;
-  final bool isReadingPhoto;
+  /// 밖에서 입력창에 포커스를 줄 때 쓴다. 없으면 카드가 자체 노드를 만든다.
+  final FocusNode? focusNode;
 
-  /// null이면 자동 정리(✨) 버튼을 보여주지 않는다.
+  /// 메모가 입력되면 ✕ 아래에 나타나는 빠른 실행 버튼들. null이면 보여주지 않는다.
   final VoidCallback? onAnalyze;
   final bool isAnalyzing;
+  final VoidCallback? onSchedule;
 
   const InputCard({
     super.key,
@@ -210,10 +193,10 @@ class InputCard extends StatefulWidget {
     required this.textColor,
     required this.subColor,
     required this.onClear,
-    this.onPhoto,
-    this.isReadingPhoto = false,
+    this.focusNode,
     this.onAnalyze,
     this.isAnalyzing = false,
+    this.onSchedule,
   });
 
   @override
@@ -221,18 +204,20 @@ class InputCard extends StatefulWidget {
 }
 
 class _InputCardState extends State<InputCard> {
-  final _focusNode = FocusNode();
+  late final _focusNode = widget.focusNode ?? FocusNode();
   bool _focused = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNode.addListener(() => setState(() => _focused = _focusNode.hasFocus));
+    _focusNode.addListener(
+      () => setState(() => _focused = _focusNode.hasFocus),
+    );
   }
 
   @override
   void dispose() {
-    _focusNode.dispose();
+    if (widget.focusNode == null) _focusNode.dispose();
     super.dispose();
   }
 
@@ -258,19 +243,19 @@ class _InputCardState extends State<InputCard> {
                 ),
               ]
             : (widget.isDark
-                ? null
-                : [
-                    BoxShadow(
-                      color: const Color(0xFF667EEA).withAlpha(18),
-                      blurRadius: 28,
-                      offset: const Offset(0, 10),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withAlpha(8),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]),
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: const Color(0xFF667EEA).withAlpha(18),
+                        blurRadius: 28,
+                        offset: const Offset(0, 10),
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withAlpha(8),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]),
       ),
       child: Stack(
         children: [
@@ -282,8 +267,13 @@ class _InputCardState extends State<InputCard> {
                 child: Row(
                   children: [
                     ShaderMask(
-                      shaderCallback: (b) => AppColors.brandGradient.createShader(b),
-                      child: const Icon(Icons.push_pin_rounded, color: Colors.white, size: 15),
+                      shaderCallback: (b) =>
+                          AppColors.brandGradient.createShader(b),
+                      child: const Icon(
+                        Icons.push_pin_rounded,
+                        color: Colors.white,
+                        size: 15,
+                      ),
                     ),
                     const SizedBox(width: 6),
                     const Text(
@@ -305,43 +295,72 @@ class _InputCardState extends State<InputCard> {
                 minLines: 6,
                 textAlignVertical: TextAlignVertical.top,
                 onChanged: (v) => MemoStorage.setCurrent(v),
-                style: TextStyle(fontSize: 16, height: 1.6, color: widget.textColor),
+                style: TextStyle(
+                  fontSize: 16,
+                  height: 1.6,
+                  color: widget.textColor,
+                ),
                 decoration: InputDecoration(
                   hintText: '기억해야 할 것을 입력하세요...',
                   hintStyle: TextStyle(
-                    color: widget.isDark ? const Color(0xFF3D3F52) : const Color(0xFFD1D5DB),
+                    color: widget.isDark
+                        ? const Color(0xFF3D3F52)
+                        : const Color(0xFFD1D5DB),
                     fontSize: 16,
                   ),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                  contentPadding: const EdgeInsets.fromLTRB(16, 10, 56, 0),
                 ),
               ),
               const SizedBox(height: 14),
             ],
           ),
           Positioned(
-            top: 4,
-            right: 4,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.onAnalyze != null)
-                  ClearButton(
-                    key: const Key('analyze-button'),
-                    onTap: widget.isAnalyzing ? () {} : widget.onAnalyze!,
-                    subColor: widget.subColor,
-                    icon: Icons.auto_awesome_outlined,
-                    loading: widget.isAnalyzing,
-                  ),
-                if (widget.onPhoto != null)
-                  ClearButton(
-                    onTap: widget.isReadingPhoto ? () {} : widget.onPhoto!,
-                    subColor: widget.subColor,
-                    icon: Icons.photo_camera_outlined,
-                    loading: widget.isReadingPhoto,
-                  ),
-                ClearButton(onTap: widget.onClear, subColor: widget.subColor),
-              ],
+            top: 10,
+            right: 12,
+            child: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: widget.controller,
+              builder: (_, value, _) {
+                final has = value.text.isNotEmpty;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _PopChip(
+                      key: const Key('clear-memo'),
+                      visible: has,
+                      icon: Icons.close_rounded,
+                      color: AppColors.danger,
+                      tooltip: '새 메모 지우기',
+                      onTap: widget.onClear,
+                    ),
+                    if (widget.onAnalyze != null) ...[
+                      const SizedBox(height: 8),
+                      _PopChip(
+                        key: const Key('card-analyze'),
+                        visible: has,
+                        icon: Icons.auto_awesome_outlined,
+                        color: AppColors.gradStart,
+                        tooltip: 'AI 자동 정리',
+                        loading: widget.isAnalyzing,
+                        milliseconds: 460,
+                        onTap: widget.isAnalyzing ? () {} : widget.onAnalyze!,
+                      ),
+                    ],
+                    if (widget.onSchedule != null) ...[
+                      const SizedBox(height: 8),
+                      _PopChip(
+                        key: const Key('card-schedule'),
+                        visible: has,
+                        icon: Icons.schedule_rounded,
+                        color: AppColors.gradStart,
+                        tooltip: '예약 생성',
+                        milliseconds: 540,
+                        onTap: widget.onSchedule!,
+                      ),
+                    ],
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -350,50 +369,70 @@ class _InputCardState extends State<InputCard> {
   }
 }
 
-class ClearButton extends StatefulWidget {
-  final VoidCallback onTap;
-  final Color subColor;
+/// 입력창 오른쪽 위의 작은 테두리 버튼. 메모가 비어 있으면 숨어 있다가, 입력되면 아래에서 통통 튀며 올라온다.
+/// [milliseconds]가 길수록 늦게 올라와서 여러 개를 두면 차례로 나타난다.
+class _PopChip extends StatelessWidget {
+  final bool visible;
   final IconData icon;
+  final Color color;
+  final String tooltip;
   final bool loading;
-  const ClearButton({
+  final int milliseconds;
+  final VoidCallback onTap;
+
+  const _PopChip({
     super.key,
+    required this.visible,
+    required this.icon,
+    required this.color,
+    required this.tooltip,
     required this.onTap,
-    required this.subColor,
-    this.icon = Icons.close_rounded,
     this.loading = false,
+    this.milliseconds = 380,
   });
 
   @override
-  State<ClearButton> createState() => _ClearButtonState();
-}
-
-class _ClearButtonState extends State<ClearButton> {
-  bool _pressed = false;
-
-  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.8 : 1.0,
-        duration: const Duration(milliseconds: 100),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: widget.loading
-              ? SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: widget.subColor,
+    final d = Duration(milliseconds: milliseconds);
+    return IgnorePointer(
+      ignoring: !visible,
+      child: AnimatedSlide(
+        offset: visible ? Offset.zero : const Offset(0, 0.9),
+        duration: d,
+        curve: Curves.easeOutBack,
+        child: AnimatedScale(
+          scale: visible ? 1 : 0.6,
+          duration: d,
+          curve: Curves.easeOutBack,
+          child: AnimatedOpacity(
+            opacity: visible ? 1 : 0,
+            duration: Duration(milliseconds: milliseconds - 160),
+            child: Tooltip(
+              message: tooltip,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onTap,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: color.withAlpha(18),
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(color: color, width: 1.4),
                   ),
-                )
-              : Icon(widget.icon, size: 18, color: widget.subColor),
+                  child: loading
+                      ? Padding(
+                          padding: const EdgeInsets.all(7),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: color,
+                          ),
+                        )
+                      : Icon(icon, size: 17, color: color),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -529,7 +568,9 @@ class _HistoryButtonState extends State<HistoryButton> {
             border: Border.all(
               color: _pressed
                   ? AppColors.gradStart.withAlpha(widget.isDark ? 100 : 80)
-                  : (widget.isDark ? AppColors.borderDark : AppColors.borderLight),
+                  : (widget.isDark
+                        ? AppColors.borderDark
+                        : AppColors.borderLight),
               width: 1.5,
             ),
           ),
@@ -549,7 +590,10 @@ class _HistoryButtonState extends State<HistoryButton> {
               if (widget.count > 0) ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: widget.isDark
                         ? AppColors.elevatedDark
@@ -630,7 +674,11 @@ class _CancelButtonState extends State<CancelButton> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.notifications_off_rounded, size: 20, color: contentColor),
+              Icon(
+                Icons.notifications_off_rounded,
+                size: 20,
+                color: contentColor,
+              ),
               const SizedBox(width: 8),
               Text(
                 widget.label,
@@ -733,13 +781,19 @@ class AppliedAnalysisChips extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.gradStart.withAlpha(isDark ? 24 : 14),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.gradStart.withAlpha(isDark ? 60 : 45)),
+        border: Border.all(
+          color: AppColors.gradStart.withAlpha(isDark ? 60 : 45),
+        ),
       ),
       child: Row(
         children: [
           ShaderMask(
             shaderCallback: (b) => AppColors.brandGradient.createShader(b),
-            child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 14),
+            child: const Icon(
+              Icons.auto_awesome_rounded,
+              color: Colors.white,
+              size: 14,
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(

@@ -7,6 +7,11 @@ String priorityLabel(MemoPriority p) => switch (p) {
   MemoPriority.high => '높음',
 };
 
+/// 자동 정리를 적용한 메모의 "학교 · 우선순위 보통" 표시. 정리하지 않은 메모는 null.
+String? classLabel(MemoEntry e) => e.category == null
+    ? null
+    : '${e.category} · 우선순위 ${priorityLabel(e.priority)}';
+
 /// AI 대신 기본(규칙 기반) 분석을 쓰게 된 이유를 사용자에게 알리는 문구.
 String fallbackMessage(FallbackReason reason) => switch (reason) {
   FallbackReason.disabled => 'AI를 쓰지 않도록 설정돼 있어 기본 분석으로 정리했어요.',

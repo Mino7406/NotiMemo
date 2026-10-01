@@ -62,8 +62,15 @@ Future<void> typeMemo(WidgetTester tester, String text) async {
   await tester.pump();
 }
 
+/// 오른쪽 메뉴를 연다.
+Future<void> openMenu(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('menu-button')));
+  await tester.pumpAndSettle();
+}
+
 /// ✨를 누르고 분석(비동기 입출력 포함)이 끝날 때까지 기다린다.
 Future<void> tapAnalyze(WidgetTester tester) async {
+  await openMenu(tester);
   await tester.tap(find.byKey(const Key('analyze-button')));
   await tester.pump();
   await tester.runAsync(
@@ -78,8 +85,9 @@ void main() {
     mockChannels();
   });
 
-  homeTest('입력창에 ✨ 버튼이 있다', (tester) async {
+  homeTest('오른쪽 메뉴에 ✨ 버튼이 있다', (tester) async {
     await openHome(tester);
+    await openMenu(tester);
     expect(find.byKey(const Key('analyze-button')), findsOneWidget);
   });
 
@@ -203,6 +211,7 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       await openHome(tester);
       await typeMemo(tester, memo);
+      await openMenu(tester);
       await tester.tap(find.byKey(const Key('analyze-button')));
       await tester.pumpAndSettle();
       expect(find.textContaining('외부 서버로 전송'), findsOneWidget);
@@ -221,6 +230,7 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       await openHome(tester);
       await typeMemo(tester, memo);
+      await openMenu(tester);
       await tester.tap(find.byKey(const Key('analyze-button')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('AI 없이 사용'));
@@ -238,6 +248,7 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       await openHome(tester);
       await typeMemo(tester, memo);
+      await openMenu(tester);
       await tester.tap(find.byKey(const Key('analyze-button')));
       await tester.pumpAndSettle();
       await tester.tapAt(const Offset(5, 5));
