@@ -51,9 +51,17 @@ Flutter → 네이티브: `show{id,memo,time}`, `cancel{id?}`(id 없으면 전�
 - 폰에 설치한 앱이 디버그 빌드면 애니메이션이 원래 덜 부드럽다. 부드러움 판단은 `flutter run --release -d <기기ID> --no-resident`로 한다(디버그·릴리스가 같은 debug 키로 서명돼 덮어써도 데이터가 유지됨).
 - 사용자는 Windows(PowerShell/Git Bash)를 쓴다. 경로에 OneDrive가 끼어 있어 폴더가 동기화 때문에 잠깐 안 보이는 일이 한 번 있었다.
 
+### 배포 서명 키 (2026-10-01 적용)
+- release는 이제 **전용 키스토어**로 서명한다. 사무실 PC에서 만들었고 위치는 `C:\Users\OWNER\.notimemo\notimemo-release.jks`(별칭 `notimemo`, SHA-256 `03:B3:5C:4C…34:EB:F7`). **저장소에는 없고 올리면 안 된다**(`.gitignore`가 막음).
+- 이 PC가 아닌 다른 PC에서 release를 만들려면 **키스토어 파일과 `android/key.properties`를 따로 복사**해야 한다(USB·개인 클라우드). `key.properties` 형식: `storePassword`, `keyPassword`, `keyAlias=notimemo`, `storeFile=<키스토어 절대경로, 슬래시>`. 비밀번호는 문서·채팅·커밋에 쓰지 않는다.
+- `key.properties`가 없는 PC는 **debug 키로 대체 서명**돼 빌드는 되지만, 그 APK는 폰에 설치된 정식 키 앱 위에 **덮어쓸 수 없다**(서명 불일치 → `flutter run`이 기존 앱을 지우고 재설치해 데이터가 사라짐). 배포·폰 테스트는 키가 있는 PC에서만 한다.
+- 폰 테스트는 항상 `flutter run --release -d <기기ID> --no-resident`. debug 모드로 설치하면 서명이 달라 같은 충돌이 난다.
+- 키를 잃어버리면 이후 업데이트를 배포할 수 없다. 키스토어와 비밀번호는 반드시 백업한다.
+- 이 키 도입 전에 v2.6.0을 받은 사용자는 **한 번 삭제 후 재설치**해야 업데이트된다.
+
 ### 다음 작업: Phase 3-7 LLM 자동 분류 (설계는 아직 승인 전)
 - 목표: 메모 → JSON `{category, priority, summary, dueTime?}`. `dueTime`이 추출되면 예약과 자동 연동("내일 3시에 ~" 입력이 곧 예약).
-- **API 공급자와 키 관리 방식이 아직 미정**이라 사용자에게 먼저 물어야 한다. **키를 APK에 넣지 않는다**는 원칙만 확정(중계 서버 방식 검토). 인터넷이 끊겨도 시연되도록 **키워드 규칙 기반 오프라인 폴백**을 둔다.
+- **방향 확정(2026-10-01)**: Gemini 무료 등급 + **Cloudflare Workers 중계 서버**(키는 Worker 비밀값, APK에 넣지 않음). 사용자가 직접 설치해 쓸 예정이라 B 방식으로 결정. 실패 시 규칙 기반 폴백, 최초 사용 시 개인정보 전송 동의, 설정에서 끄기. **키를 APK에 넣지 않는다**는 원칙만 확정(중계 서버 방식 검토). 인터넷이 끊겨도 시연되도록 **키워드 규칙 기반 오프라인 폴백**을 둔다.
 - 데이터 모델은 이미 준비돼 있다: `MemoEntry`의 `category`, `priority`, `summary`, `scheduledAt`(사용 시작 전).
 
 ### Phase 3-6 OCR에서 알아둘 것
