@@ -307,28 +307,99 @@ void main() {
     });
   });
 
-  group('튜토리얼', () {
-    homeTest('처음 설치하면 튜토리얼이 뜨고, 끝까지 넘기면 본 것으로 저장된다', (tester) async {
+  group('알림 권한 안내', () {
+    final requested = <String>[];
+    void mockPermission(int status) {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_permChannel, (call) async {
+            requested.add(call.method);
+            if (call.method == 'checkPermissionStatus') return status;
+            if (call.method == 'requestPermissions') return {17: 1};
+            return null;
+          });
+    }
+
+    homeTest('권한이 꺼져 있으면 설정 버튼이 있는 토스트가 계속 떠 있다', (tester) async {
+      requested.clear();
+      mockPermission(0);
+      await openHome(tester);
+      await tester.pump(const Duration(seconds: 5));
+      expect(find.textContaining('알림 권한이 꺼져 있어요'), findsOneWidget);
+      expect(find.byKey(const Key('toast-action')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('toast-action')));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(requested, contains('requestPermissions'));
+      // 토스트의 하루짜리 타이머가 남지 않게 화면을 걷어낸다.
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    homeTest('권한이 켜져 있으면 토스트가 없다', (tester) async {
+      mockPermission(1);
+      await openHome(tester);
+      await tester.pump(const Duration(seconds: 5));
+      expect(find.textContaining('알림 권한이 꺼져 있어요'), findsNothing);
+    });
+  });
+
+  group('사용 방법(코치마크)', () {
+    /// 단계 이동 뒤 구멍·말풍선이 자리잡도록 시간을 흘려 보낸다.
+    Future<void> step(WidgetTester tester) async {
+      await tester.tap(find.byKey(const Key('tutorial-next')));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    homeTest('처음 설치하면 코치마크가 뜨고, 끝까지 넘기면 본 것으로 저장된다', (tester) async {
       SharedPreferences.setMockInitialValues({'ai_consent': true});
       await openHome(tester);
-      expect(find.text('메모를 알림창에 고정해요'), findsOneWidget);
-      for (var i = 0; i < 4; i++) {
-        await tester.tap(find.byKey(const Key('tutorial-next')));
-        await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('여기에 메모를 적어요'), findsOneWidget);
+      expect(find.text('1 / 6'), findsOneWidget);
+      for (final title in [
+        '알림창에 고정해요',
+        'AI가 자동으로 정리해줘요',
+        '원하는 시각에 알려 줘요',
+        '더 많은 기능은 ☰ 메뉴에 있어요',
+        '알림창에서 바로 고치고 지워요',
+      ]) {
+        await step(tester);
+        expect(find.text(title), findsOneWidget);
       }
       expect(find.text('시작하기'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('tutorial-next')));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const Key('menu-button')), findsOneWidget);
+      await step(tester);
+      expect(find.byKey(const Key('tutorial-next')), findsNothing);
       expect(await TutorialStorage.getSeen(), isTrue);
     });
 
-    homeTest('건너뛰기를 눌러도 본 것으로 저장된다', (tester) async {
+    homeTest('이전 버튼으로 앞 단계로 돌아갈 수 있고, 메뉴 단계에도 안내가 뜬다', (tester) async {
       SharedPreferences.setMockInitialValues({'ai_consent': true});
       await openHome(tester);
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byKey(const Key('tutorial-prev')), findsNothing);
+      for (var i = 0; i < 4; i++) {
+        await step(tester);
+      }
+      expect(find.text('더 많은 기능은 ☰ 메뉴에 있어요'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('tutorial-prev')));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text('원하는 시각에 알려 줘요'), findsOneWidget);
       await tester.tap(find.byKey(const Key('tutorial-skip')));
-      await tester.pumpAndSettle();
-      expect(find.text('메모를 알림창에 고정해요'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 500));
+    });
+
+    homeTest('건너뛰기를 눌러도 본 것으로 저장되고 입력창은 원래대로 돌아온다', (tester) async {
+      SharedPreferences.setMockInitialValues({'ai_consent': true});
+      await openHome(tester);
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('금요일 오후 3시 치과 예약 꼭 가기'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('tutorial-skip')));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text('여기에 메모를 적어요'), findsNothing);
+      expect(find.text('금요일 오후 3시 치과 예약 꼭 가기'), findsNothing);
       expect(await TutorialStorage.getSeen(), isTrue);
     });
 
@@ -336,20 +407,25 @@ void main() {
       SharedPreferences.setMockInitialValues({'ai_consent': true});
       await MemoStorage.saveList([MemoEntry(id: 'a', memo: '옛 메모', time: 1)]);
       await openHome(tester);
-      expect(find.text('메모를 알림창에 고정해요'), findsNothing);
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('여기에 메모를 적어요'), findsNothing);
       expect(await TutorialStorage.getSeen(), isTrue);
     });
 
-    homeTest('메뉴의 튜토리얼로 다시 볼 수 있다', (tester) async {
+    homeTest('메뉴의 사용 방법으로 다시 볼 수 있고, 쓰던 글은 보존된다', (tester) async {
       await openHome(tester);
-      expect(find.text('메모를 알림창에 고정해요'), findsNothing);
+      await typeMemo(tester, '내가 쓰던 글');
       await openMenu(tester);
+      expect(find.text('사용 방법'), findsOneWidget);
       await tester.tap(find.byKey(const Key('menu-tutorial')));
-      await tester.pumpAndSettle();
-      expect(find.text('메모를 알림창에 고정해요'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('여기에 메모를 적어요'), findsOneWidget);
       await tester.tap(find.byKey(const Key('tutorial-skip')));
-      await tester.pumpAndSettle();
-      expect(find.text('메모를 알림창에 고정해요'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text('여기에 메모를 적어요'), findsNothing);
+      expect(find.text('내가 쓰던 글'), findsOneWidget);
     });
   });
 
@@ -755,6 +831,7 @@ void main() {
     homeTest('직접 입력만으로는 안내가 뜨지 않는다', (tester) async {
       await openHome(tester);
       await typeMemo(tester, '직접 쓴 메모');
+      await tester.pump(const Duration(seconds: 1));
       await tester.pump(const Duration(seconds: 1));
       expect(find.byKey(hintKey), findsNothing);
     });

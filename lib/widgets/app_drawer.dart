@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'memo_list_row.dart';
 
-/// 오른쪽에서 밀려 나오는 메뉴. 홈 화면의 보조 기능(AI 정리, 사진, 예약, 목록, 설정, 튜토리얼)을 모았다.
+/// 오른쪽에서 밀려 나오는 메뉴. 홈 화면의 보조 기능(AI 정리, 사진, 예약, 목록, 설정, 사용 방법)을 모았다.
 /// 항목을 누르면 메뉴를 닫고 동작을 실행한다.
 class AppMenuDrawer extends StatelessWidget {
   final int scheduledCount;
@@ -117,6 +117,7 @@ class AppMenuDrawer extends StatelessWidget {
     );
 
     return Drawer(
+      key: const Key('menu-drawer'),
       width: 300,
       backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
       shape: const RoundedRectangleBorder(
@@ -220,7 +221,7 @@ class AppMenuDrawer extends StatelessWidget {
                   item(
                     key: const Key('menu-tutorial'),
                     icon: Icons.play_circle_outline_rounded,
-                    label: '튜토리얼',
+                    label: '사용 방법',
                     onTap: onTutorial,
                   ),
                 ],

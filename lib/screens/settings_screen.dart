@@ -160,7 +160,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _AiSwitchCard(
                       switchKey: const Key('vibration-switch'),
                       title: '알림 진동',
-                      onText: '알림을 고정하거나 예약을 마치거나 다시 게시할 때 진동해요.',
+                      onText: '알림을 고정하거나 예약을 걸거나 다시 게시할 때 진동해요.',
                       offText: '꺼져 있어요. 진동하지 않아요.',
                       value: _vibration,
                       onChanged: _setVibration,

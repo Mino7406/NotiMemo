@@ -86,6 +86,16 @@ class NotificationService {
     return null;
   }
 
+  /// 알림 권한을 다시 요청한다. 이미 "다시 묻지 않음"으로 막혀 있으면 시스템 창이 뜨지 않으므로
+  /// 앱 설정 화면을 연다. 허용됐으면 true.
+  static Future<bool> requestOrOpenSettings() async {
+    if (await checkPermission() == 'permanentlyDenied') {
+      await openAppSettings();
+      return false;
+    }
+    return requestPermission();
+  }
+
   // Returns: 'granted', 'denied', 'permanentlyDenied'
   static Future<String> checkPermission() async {
     final status = await Permission.notification.status;

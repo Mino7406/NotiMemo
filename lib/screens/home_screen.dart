@@ -19,7 +19,7 @@ import '../utils/time_format.dart';
 import '../widgets/analysis_sheet.dart';
 import '../widgets/app_dialogs.dart';
 import '../widgets/app_drawer.dart';
-import 'tutorial_screen.dart';
+import '../widgets/coach_mark.dart';
 import 'settings_screen.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/history_sheet.dart';
@@ -46,6 +46,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   final _controller = TextEditingController();
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   List<MemoEntry> _memoList = [];
   bool _isPinning = false;
   bool _isReadingPhoto = false;
@@ -93,8 +94,11 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _controller.addListener(_dismissStaleUndo);
-    _load().then((_) => _maybeShowTutorial());
-    NotificationService.requestPermission();
+    // 알림 권한 창이 사용 방법과 겹치지 않도록 사용 방법이 끝난 뒤에 요청한다.
+    _load()
+        .then((_) => _maybeShowTutorial())
+        .then((_) => NotificationService.requestPermission())
+        .then((_) => _checkNotificationPermission());
     NotificationService.restorePinned();
     NotificationService.listenForChanges(_syncNotificationState);
     _checkUpdate();
@@ -116,6 +120,7 @@ class _HomeScreenState extends State<HomeScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       NotificationService.restorePinned();
+      _checkNotificationPermission();
       _syncNotificationState();
     }
   }
@@ -147,9 +152,59 @@ class _HomeScreenState extends State<HomeScreen>
       await TutorialStorage.setSeen();
       return;
     }
-    await Navigator.push(
+    await _startTutorial(firstRun: true);
+  }
+
+  /// 홈 화면 위에 코치마크로 사용 방법을 안내한다. ✨·🕒는 글이 있어야 보이므로 샘플 글을 잠시 넣고,
+  /// 끝나면 원래 입력으로 되돌린다. [firstRun]이면 끝난 뒤(건너뛰기·뒤로 가기 포함) 본 것으로 기록한다.
+  Future<void> _startTutorial({bool firstRun = false}) async {
+    final saved = _controller.text;
+    FocusScope.of(context).unfocus();
+    _controller.text = '금요일 오후 3시 치과 예약 꼭 가기';
+    Future<void> closeMenu() async =>
+        _scaffoldKey.currentState?.closeEndDrawer();
+    await showCoachMarks(
       context,
-      MaterialPageRoute(builder: (_) => const TutorialScreen(firstRun: true)),
+      steps: [
+        const CoachStep(
+          target: Key('input-card'),
+          title: '여기에 메모를 적어요',
+          body: '떠오르는 일을 적어 두세요.\n사진 속 글자를 불러와 적을 수도 있어요.',
+        ),
+        const CoachStep(
+          target: Key('pin-button'),
+          title: '알림창에 고정해요',
+          body: '[알림 고정하기]를 누르면 메모가 알림창에 남아서\n언제든 확인할 수 있어요.',
+        ),
+        const CoachStep(
+          target: Key('card-analyze'),
+          title: 'AI가 자동으로 정리해줘요',
+          body: '✨를 누르면 분류·우선순위·메모 요약과\n일정 시각까지 찾아 줘요.',
+        ),
+        const CoachStep(
+          target: Key('card-schedule'),
+          title: '원하는 시각에 알려 줘요',
+          body: '🕒로 시각을 정하면 그때 알림창에 고정돼요.\nAI가 생각 후 예약 추천도 해줘요.',
+        ),
+        CoachStep(
+          target: const Key('menu-drawer'),
+          title: '더 많은 기능은 ☰ 메뉴에 있어요',
+          body: '사진으로 메모 가져오기, 예약 목록, 알림 내역,\n설정을 이 메뉴에서 열 수 있어요.',
+          onEnter: () async => _scaffoldKey.currentState?.openEndDrawer(),
+          onExit: closeMenu,
+          skipAtTop: true,
+        ),
+        CoachStep(
+          title: '알림창에서 바로 고치고 지워요',
+          body: '앱을 열지 않아도 알림에서 [수정]하거나\n[지우기]로 정리할 수 있어요.',
+          art: (_) => const NotificationActionsArt(),
+        ),
+      ],
+      onClose: () async {
+        await closeMenu();
+        if (mounted) _controller.text = saved;
+        if (firstRun) await TutorialStorage.setSeen();
+      },
     );
   }
 
@@ -399,6 +454,41 @@ class _HomeScreenState extends State<HomeScreen>
     return updated;
   }
 
+  /// 지금 떠 있는 "알림 권한이 꺼져 있어요 [설정]" 토스트(권한이 켜지면 닫는다).
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? _permToast;
+
+  /// 알림 권한이 꺼져 있으면 [설정] 버튼이 달린 토스트를 계속 띄워 둔다. 켜져 있으면 닫는다.
+  /// 앱을 열 때와 설정에서 돌아왔을 때 부른다.
+  Future<void> _checkNotificationPermission() async {
+    final status = await NotificationService.checkPermission();
+    if (!mounted) return;
+    if (status == 'granted') {
+      _permToast?.close();
+      _permToast = null;
+    } else if (_permToast == null) {
+      _toastPermission('알림 권한이 꺼져 있어요.');
+    }
+  }
+
+  /// 권한 안내 토스트. 닫을 때까지 남고, [설정]을 누르면 권한 요청 창(막혔으면 앱 설정)을 다시 연다.
+  void _toastPermission(String msg) {
+    final toast = showAppToast(
+      context,
+      msg,
+      isError: true,
+      actionLabel: '설정',
+      duration: const Duration(days: 1),
+      onAction: () async {
+        await NotificationService.requestOrOpenSettings();
+        await _checkNotificationPermission();
+      },
+    );
+    _permToast = toast;
+    toast.closed.then((_) {
+      if (identical(_permToast, toast)) _permToast = null;
+    });
+  }
+
   void _toast(String msg, {bool isError = false}) =>
       showAppToast(context, msg, isError: isError);
 
@@ -458,7 +548,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
     final permError = await NotificationService.ensurePermission();
     if (permError != null) {
-      _toast(permError, isError: true);
+      _toastPermission(permError);
       return;
     }
     setState(() => _isPinning = true);
@@ -495,7 +585,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
     final permError = await NotificationService.ensurePermission();
     if (permError != null) {
-      _toast(permError, isError: true);
+      _toastPermission(permError);
       return;
     }
     if (!mounted) return;
@@ -614,7 +704,7 @@ class _HomeScreenState extends State<HomeScreen>
 
     final permError = await NotificationService.ensurePermission();
     if (permError != null) {
-      _toast(permError, isError: true);
+      _toastPermission(permError);
       return;
     }
     if (choice == RestoreChoice.schedule) {
@@ -664,6 +754,7 @@ class _HomeScreenState extends State<HomeScreen>
     final subColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
 
     return Scaffold(
+      key: _scaffoldKey,
       endDrawer: AppMenuDrawer(
         scheduledCount: _scheduled.length,
         historyCount: _memoList.length,
@@ -685,10 +776,7 @@ class _HomeScreenState extends State<HomeScreen>
           );
           await _refreshClassify();
         },
-        onTutorial: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const TutorialScreen()),
-        ),
+        onTutorial: _startTutorial,
       ),
       body: SafeArea(
         child: FadeTransition(
@@ -722,6 +810,7 @@ class _HomeScreenState extends State<HomeScreen>
                               : const SizedBox.shrink(),
                         ),
                         InputCard(
+                          key: const Key('input-card'),
                           controller: _controller,
                           focusNode: _inputFocus,
                           onAnalyze: _analyze,
@@ -769,6 +858,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                         const SizedBox(height: 14),
                         PinButton(
+                          key: const Key('pin-button'),
                           isPinning: _isPinning,
                           onTap: _createNotification,
                         ),

@@ -51,6 +51,12 @@
 **사무실 PC 환경 메모**: `analysis_options.yaml`과 `linux/macos/windows/flutter/generated_*` 파일이 새 PC에서 자동으로 바뀐 채 미커밋 상태일 수 있다. 의도한 변경이 아니니 커밋하지 말고 `git checkout -- <파일>`로 되돌린다.
 
 
+### 집 세션 기록 (2026-10-02 밤) — 사용 방법(코치마크)·권한 안내
+- **튜토리얼을 코치마크 방식 "사용 방법"으로 교체**: 5장 슬라이드(`tutorial_screen.dart`)를 지우고 실제 홈 화면 위에 어두운 막 + 구멍 + 말풍선으로 6단계를 안내한다(`widgets/coach_mark.dart`: `CoachStep`, `showCoachMarks`, `findRectByKey`). 단계·문구는 `home_screen.dart`의 `_startTutorial`. 대상은 `Key`로 찾는다(`input-card`, `pin-button`, `card-analyze`, `card-schedule`, `menu-drawer`). ✨·🕒는 글이 있어야 보이므로 샘플 글을 잠시 넣고 끝나면 원래 글로 복원. 위치를 0.1초마다 다시 재서 입장 애니메이션을 따라간다. `이전` 버튼, `건너뛰기`는 말풍선 왼쪽 아래(5단계 메뉴만 카드 바로 위, 마지막 단계는 숨김). 메뉴 이름은 `사용 방법`. `tutorial_seen` 규칙은 그대로.
+- **알림 권한 요청은 사용 방법이 끝난 뒤**에 한다(`initState` 체인). 권한이 꺼져 있으면 `설정` 버튼 달린 토스트가 계속 남고(`_checkNotificationPermission`, 앱을 열 때·재개 때), 누르면 요청 창을 다시 띄운다(막혀 있으면 앱 설정, `NotificationService.requestOrOpenSettings`). 고정·예약의 권한 오류 토스트에도 같은 버튼. 다른 토스트가 덮으면 다음 재확인 때 다시 뜬다.
+- 자동 테스트 393개, `flutter analyze` 무결점.
+- **다음 순서(사용자 결정)**: 위젯 개발(Phase 4, 먼저 설계 상의) → 마지막에 3.0.0 정식 릴리스 준비.
+
 ### 사무실 세션 기록 (2026-10-02 저녁) — 사진 가져오기·진동·복구 (모두 `master`, 자동 테스트 390개)
 - **입력창 버튼**: ✕와 ✨·🕒 사이 28px(✨↔🕒 8px)로 간격만 띄워 분리, ✨·🕒는 오른쪽 바깥에서 옆으로 미끄러져 들어온다. 입력창은 글이 길어지면 부드럽게 늘어난다(`_inputGrowDuration`).
 - **사진으로 메모 가져오기**: 메뉴 항목과 사진 선택 창 제목 문구를 "사진으로 메모 가져오기"로 통일. 새 메모에 이미 글이 있으면 이어 붙이지 않고 **빨간 토스트 "기존 메모를 지우고 불러오시겠습니까?" + 적용 버튼**으로 묻는다(적용 시 사진 글자로 대체 + 안내 말풍선). 비었거나 공백뿐이면 바로 채운다. `appendRecognizedText`는 더 쓰지 않는다.
