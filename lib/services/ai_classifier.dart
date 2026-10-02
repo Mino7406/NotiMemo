@@ -31,7 +31,12 @@ class AiClassifier {
 
   /// 기기당 하루 호출 상한. 서버의 하루 무료 사용량(약 600건)을 여러 기기가 나눠 쓰므로
   /// 앱에서도 막는다.
-  static const dailyLimit = 20;
+  ///
+  /// TODO(3.0.0): 최종 3.0.0 빌드 전까지 개발·시험 중이라 사실상 제한을 풀어 둔다.
+  /// 배포 빌드 전에 [releaseDailyLimit]로 되돌린다.
+  static int dailyLimit = devDailyLimit;
+  static const releaseDailyLimit = 20;
+  static const devDailyLimit = 100000;
 
   /// 서버가 받는 최대 길이(worker MAX_MEMO_LENGTH). 분류에는 앞부분이면 충분하다.
   static const maxMemoLength = 500;

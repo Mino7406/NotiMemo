@@ -33,7 +33,12 @@ class FakeTransport {
 AiClassifier classifier(FakeTransport t) => AiClassifier(transport: t.call);
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({'ai_consent': true}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({'ai_consent': true});
+    AiClassifier.dailyLimit =
+        AiClassifier.releaseDailyLimit; // 상한 동작은 배포 값으로 시험
+  });
+  tearDown(() => AiClassifier.dailyLimit = AiClassifier.devDailyLimit);
 
   group('서버를 부르지 않는 경우', () {
     test('아직 동의를 묻지 않았으면 서버에 아무것도 보내지 않는다', () async {

@@ -213,6 +213,7 @@ Future<bool?> showAiConsentDialog(BuildContext context) {
             '• 전송되는 것: 메모 글자(최대 500자)와 이 앱 설치를 구분하는 무작위 번호\n'
             '• 처리 서버: Cloudflare (AI 학습에 쓰이지 않고 저장되지 않아요)\n'
             '• 비밀번호·계좌번호 같은 민감한 내용은 넣지 마세요\n'
+            '• 하루에 기기당 20회까지 사용할 수 있어요\n'
             '• 설정에서 언제든 끌 수 있어요',
             style: TextStyle(fontSize: 13, color: textColor, height: 1.55),
           ),
