@@ -249,36 +249,32 @@ class _ScheduledSheetState extends State<_ScheduledSheet> {
                           ? AppColors.elevatedDark
                           : const Color(0xFFF9FAFB),
                       borderRadius: BorderRadius.circular(12),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () => Navigator.pop(context, note),
-                        child: Container(
-                          padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: borderColor),
-                          ),
-                          child: MemoListRow(
-                            icon: Icons.schedule_rounded,
-                            label: _entries[note.id] == null
-                                ? null
-                                : classLabel(_entries[note.id]!),
-                            labelKey: Key('scheduled-label-${note.id}'),
-                            memo: note.memo,
-                            memoMaxLines: 2,
-                            timeText: formatEntryTime(note.at),
-                            textColor: textColor,
-                            subColor: subColor,
-                            actions: [
-                              OutlinedIconAction(
-                                key: Key('scheduled-cancel-${note.id}'),
-                                icon: Icons.close_rounded,
-                                tooltip: '예약 취소',
-                                isDark: isDark,
-                                onTap: () => _cancel(note),
-                              ),
-                            ],
-                          ),
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: borderColor),
+                        ),
+                        child: MemoListRow(
+                          icon: Icons.schedule_rounded,
+                          label: _entries[note.id] == null
+                              ? null
+                              : classLabel(_entries[note.id]!),
+                          labelKey: Key('scheduled-label-${note.id}'),
+                          memo: note.memo,
+                          memoMaxLines: 2,
+                          timeText: formatEntryTime(note.at),
+                          textColor: textColor,
+                          subColor: subColor,
+                          actions: [
+                            OutlinedIconAction(
+                              key: Key('scheduled-cancel-${note.id}'),
+                              icon: Icons.close_rounded,
+                              tooltip: '예약 취소',
+                              isDark: isDark,
+                              onTap: () => _cancel(note),
+                            ),
+                          ],
                         ),
                       ),
                     ),
