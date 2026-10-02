@@ -4,6 +4,7 @@ import 'package:notimemo/models/memo_analysis.dart';
 import 'package:notimemo/models/memo_entry.dart';
 import 'package:notimemo/screens/settings_screen.dart';
 import 'package:notimemo/storage/ai_storage.dart';
+import 'package:notimemo/storage/settings_storage.dart';
 import 'package:notimemo/utils/due_parser.dart';
 import 'package:notimemo/widgets/analysis_sheet.dart';
 import 'package:notimemo/widgets/app_dialogs.dart';
@@ -55,6 +56,7 @@ void main() {
       expect(find.textContaining('언제든 끌 수 있어요'), findsOneWidget);
       expect(find.textContaining('기본 분석은 쓸 수 있어요'), findsOneWidget);
       expect(find.byKey(const Key('consent-note')), findsOneWidget);
+      expect(find.textContaining('하루에 기기당 20회'), findsOneWidget);
       expect(find.textContaining('참고: VPN을 쓰는 중이면'), findsOneWidget);
       expect(find.textContaining('VPN 제외 앱에 추가'), findsOneWidget);
     });
@@ -272,6 +274,23 @@ void main() {
 
     bool switchValue(WidgetTester tester) =>
         tester.widget<Switch>(find.byKey(const Key('ai-switch'))).value;
+
+    testWidgets('진동 스위치: 기본 켜짐, 끄면 저장된다', (tester) async {
+      await openSettings(tester);
+      Switch sw() =>
+          tester.widget<Switch>(find.byKey(const Key('vibration-switch')));
+      expect(sw().value, isTrue);
+      await tester.tap(find.byKey(const Key('vibration-switch')));
+      await tester.pumpAndSettle();
+      expect(sw().value, isFalse);
+      expect(await SettingsStorage.getVibration(), isFalse);
+    });
+
+    testWidgets('앱 정보에 앱 이름 줄은 없다', (tester) async {
+      await openSettings(tester);
+      expect(find.text('앱 이름'), findsNothing);
+      expect(find.text('버전'), findsOneWidget);
+    });
 
     testWidgets('처음에는 꺼져 있다', (tester) async {
       await openSettings(tester);

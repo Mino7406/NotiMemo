@@ -14,7 +14,6 @@ import '../theme/app_theme.dart';
 import '../utils/analysis_labels.dart';
 import '../utils/rule_classifier.dart';
 import '../utils/due_parser.dart';
-import '../utils/ocr_text.dart';
 import '../utils/reminder_time.dart';
 import '../utils/time_format.dart';
 import '../widgets/analysis_sheet.dart';
@@ -96,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen>
     _controller.addListener(_dismissStaleUndo);
     _load().then((_) => _maybeShowTutorial());
     NotificationService.requestPermission();
+    NotificationService.restorePinned();
     NotificationService.listenForChanges(_syncNotificationState);
     _checkUpdate();
     WidgetsBinding.instance.addPostFrameCallback((_) => _animCtrl.forward());
@@ -114,7 +114,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _syncNotificationState();
+    if (state == AppLifecycleState.resumed) {
+      NotificationService.restorePinned();
+      _syncNotificationState();
+    }
   }
 
   Future<void> _checkUpdate() async {
@@ -399,7 +402,13 @@ class _HomeScreenState extends State<HomeScreen>
   void _toast(String msg, {bool isError = false}) =>
       showAppToast(context, msg, isError: isError);
 
-  /// 사진에서 글자를 읽어 입력창에 이어 붙인다. 고치고 고정/예약하는 건 사용자 몫이다.
+  void _fillFromPhoto(String text) {
+    _setMemoText(text);
+    _toast('사진으로부터 글자를 불러왔어요.');
+    _showAiHint(); // ✨를 눌러 AI로 정리해 보라고 가리킨다
+  }
+
+  /// 사진에서 글자를 읽어 입력창에 불러온다. 고치고 고정/예약하는 건 사용자 몫이다.
   Future<void> _readPhoto() async {
     if (_isReadingPhoto) return;
     final source = await showPhotoSourceSheet(context);
@@ -412,14 +421,21 @@ class _HomeScreenState extends State<HomeScreen>
         _toast('글자를 찾지 못했어요.', isError: true);
         return;
       }
-      final merged = appendRecognizedText(_controller.text, text);
-      _controller.value = TextEditingValue(
-        text: merged,
-        selection: TextSelection.collapsed(offset: merged.length),
-      );
-      MemoStorage.setCurrent(merged);
-      _toast('사진으로부터 글자를 불러왔어요.');
-      _showAiHint(); // ✨를 눌러 AI로 정리해 보라고 가리킨다
+      // 사진 글자는 이어 붙이지 않고 그 자리를 대신한다. 이미 쓴 글이 있으면 먼저 묻는다.
+      if (_controller.text.trim().isEmpty) {
+        _fillFromPhoto(text);
+      } else {
+        showAppToast(
+          context,
+          '기존 메모를 지우고 불러오시겠습니까?',
+          isError: true,
+          actionLabel: '적용',
+          duration: const Duration(seconds: 7),
+          onAction: () {
+            if (mounted) _fillFromPhoto(text);
+          },
+        );
+      }
     } catch (e) {
       if (mounted) _toast('글자를 읽지 못했어요: $e', isError: true);
     } finally {
@@ -463,6 +479,7 @@ class _HomeScreenState extends State<HomeScreen>
       });
       await _syncNotificationState();
       _toast(wasEditing ? '알림이 수정되었습니다!' : '알림이 고정되었습니다!');
+      if (!wasEditing) NotificationService.vibrate();
     } catch (e) {
       _toast('오류: $e', isError: true);
     } finally {
@@ -504,6 +521,7 @@ class _HomeScreenState extends State<HomeScreen>
       });
       await _syncNotificationState();
       _toast('${formatEntryTime(at.millisecondsSinceEpoch)}에 고정되도록 예약했어요.');
+      NotificationService.vibrate();
     } catch (e) {
       _toast('오류: $e', isError: true);
     }
@@ -611,6 +629,7 @@ class _HomeScreenState extends State<HomeScreen>
       );
       setState(() => _pinnedIds = {..._pinnedIds, entry.id});
       _toast('알림이 다시 생성되었습니다!');
+      NotificationService.vibrate();
     } catch (e) {
       _toast('오류: $e', isError: true);
     }
@@ -632,6 +651,7 @@ class _HomeScreenState extends State<HomeScreen>
       setState(() => _memoList = updated);
       await _syncNotificationState();
       _toast('${formatEntryTime(at.millisecondsSinceEpoch)}에 고정되도록 예약했어요.');
+      NotificationService.vibrate();
     } catch (e) {
       _toast('오류: $e', isError: true);
     }

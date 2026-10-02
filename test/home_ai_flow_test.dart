@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:notimemo/models/memo_entry.dart';
 import 'package:notimemo/screens/home_screen.dart';
 import 'package:notimemo/storage/ai_storage.dart';
+import 'package:notimemo/storage/settings_storage.dart';
+import 'package:notimemo/theme/app_theme.dart';
 import 'package:notimemo/services/ocr_service.dart';
 import 'package:notimemo/storage/memo_storage.dart';
 import 'package:notimemo/utils/rule_classifier.dart';
@@ -157,6 +159,28 @@ void main() {
     await tester.tapAt(const Offset(5, 5));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('applied-analysis')), findsNothing);
+  });
+
+  group('진동', () {
+    int vibrations() => shown.where((c) => c.method == 'vibrate').length;
+
+    homeTest('고정하면 진동한다', (tester) async {
+      await openHome(tester);
+      await typeMemo(tester, memo);
+      await tester.tap(find.text('알림 고정하기'));
+      await tester.pumpAndSettle();
+      expect(vibrations(), 1);
+    });
+
+    homeTest('설정에서 끄면 진동하지 않는다', (tester) async {
+      await SettingsStorage.setVibration(false);
+      await openHome(tester);
+      await typeMemo(tester, memo);
+      await tester.tap(find.text('알림 고정하기'));
+      await tester.pumpAndSettle();
+      expect(shown.where((c) => c.method == 'show'), hasLength(1));
+      expect(vibrations(), 0);
+    });
   });
 
   homeTest('적용한 뒤 고정하면 카테고리·우선순위가 히스토리에 저장된다', (tester) async {
@@ -680,7 +704,7 @@ void main() {
       OcrService.debugReader = (_) async => text;
       addTearDown(() => OcrService.debugReader = null);
       await openMenu(tester);
-      await tester.tap(find.text('사진으로 메모 입력'));
+      await tester.tap(find.text('사진으로 메모 가져오기'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('갤러리에서 선택'));
       await tester.pump();
@@ -756,17 +780,13 @@ void main() {
       expect(find.text('자동 정리'), findsOneWidget); // 결과 시트
     });
 
-    homeTest('말풍선을 눌러도 AI 정리가 시작되고 안내는 사라진다', (tester) async {
+    homeTest('말풍선을 눌러도 AI 정리는 시작되지 않고 안내도 그대로다', (tester) async {
       await openHome(tester);
       await readPhoto(tester, '내일 오후 3시 치과 예약하기');
-      await tester.tap(find.byKey(hintKey));
-      await tester.pump();
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 300)),
-      );
-      await tester.pumpAndSettle(const Duration(milliseconds: 200));
-      expect(find.byKey(hintKey), findsNothing);
-      expect(find.text('자동 정리'), findsOneWidget);
+      await tester.tap(find.byKey(hintKey), warnIfMissed: false);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('자동 정리'), findsNothing);
+      expect(find.byKey(hintKey), findsOneWidget);
     });
 
     homeTest('아무것도 안 해도 12초 뒤에는 저절로 사라진다', (tester) async {
@@ -807,10 +827,82 @@ void main() {
       await readPhoto(tester, '첫 번째');
       await tester.pump(const Duration(seconds: 8));
       await readPhoto(tester, '두 번째');
+      await tester.tap(find.byKey(const Key('toast-action'))); // 기존 메모 교체 적용
+      await tester.pump(const Duration(milliseconds: 100));
       await tester.pump(const Duration(seconds: 8)); // 첫 안내 기준이면 이미 꺼졌을 시점
       expect(find.byKey(hintKey), findsOneWidget);
       await tester.pump(const Duration(seconds: 5));
       expect(find.byKey(hintKey), findsNothing);
+    });
+  });
+
+  group('사진 글자 vs 이미 쓴 메모', () {
+    String memoText(WidgetTester tester) =>
+        tester.widget<TextField>(find.byType(TextField).first).controller!.text;
+    Future<void> photo(WidgetTester tester, String text) async {
+      OcrService.debugReader = (_) async => text;
+      addTearDown(() => OcrService.debugReader = null);
+      await openMenu(tester);
+      await tester.tap(find.text('사진으로 메모 가져오기'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('갤러리에서 선택'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    homeTest('글이 있으면 바로 바꾸지 않고 빨간 토스트로 묻는다', (tester) async {
+      await openHome(tester);
+      await typeMemo(tester, '쓰던 메모');
+      await photo(tester, '사진 글자');
+      expect(find.text('기존 메모를 지우고 불러오시겠습니까?'), findsOneWidget);
+      expect(
+        tester.widget<SnackBar>(find.byType(SnackBar)).backgroundColor,
+        AppColors.danger,
+      );
+      expect(
+        tester
+            .widget<Text>(
+              find.descendant(
+                of: find.byKey(const Key('toast-action')),
+                matching: find.byType(Text),
+              ),
+            )
+            .data,
+        '적용',
+      );
+      expect(memoText(tester), '쓰던 메모'); // 아직 그대로
+      expect(find.byKey(const Key('ai-hint')), findsNothing);
+    });
+
+    homeTest('적용을 누르면 사진 글자로 대체되고 안내가 뜬다', (tester) async {
+      await openHome(tester);
+      await typeMemo(tester, '쓰던 메모');
+      await photo(tester, '사진 글자');
+      await tester.tap(find.byKey(const Key('toast-action')));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(memoText(tester), '사진 글자');
+      expect(find.byKey(const Key('ai-hint')), findsOneWidget);
+      await tester.pump(
+        const Duration(milliseconds: 600),
+      ); // 앞 토스트가 닫힌 뒤 다음 토스트
+      expect(find.text('사진으로부터 글자를 불러왔어요.'), findsOneWidget);
+    });
+
+    homeTest('누르지 않으면 메모는 그대로이고 안내도 없다', (tester) async {
+      await openHome(tester);
+      await typeMemo(tester, '쓰던 메모');
+      await photo(tester, '사진 글자');
+      await tester.pump(const Duration(seconds: 9));
+      expect(memoText(tester), '쓰던 메모');
+      expect(find.byKey(const Key('ai-hint')), findsNothing);
+    });
+
+    homeTest('공백뿐인 메모는 묻지 않고 바로 채운다', (tester) async {
+      await openHome(tester);
+      await typeMemo(tester, '  ');
+      await photo(tester, '사진 글자');
+      expect(find.text('기존 메모를 지우고 불러오시겠습니까?'), findsNothing);
+      expect(memoText(tester), '사진 글자');
     });
   });
 

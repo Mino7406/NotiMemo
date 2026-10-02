@@ -44,7 +44,7 @@ class _PhotoSourceSheet extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
-                '사진에서 글자 가져오기',
+                '사진으로 메모 가져오기',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -121,7 +121,11 @@ class _SourceTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: textColor),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: textColor,
+                  ),
                 ),
               ),
               Icon(Icons.chevron_right_rounded, size: 20, color: subColor),

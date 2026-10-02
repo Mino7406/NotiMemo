@@ -107,16 +107,41 @@ void main() {
       expect(r.last.bottom, lessThan(card.bottom - 12));
     });
 
-    testWidgets('버튼 사이 간격은 8px로 일정하다', (tester) async {
+    testWidgets('✕는 ✨·🕒와 28px 떼어 두고, ✨·🕒 사이는 8px다', (tester) async {
       await openCard(tester, text: '메모');
       final r = [
         for (final k in [clearKey, analyzeKey, scheduleKey]) rectOf(tester, k),
       ];
-      final gap1 = r[1].top - r[0].bottom;
-      final gap2 = r[2].top - r[1].bottom;
-      expect(gap1, closeTo(8, 0.6));
-      expect(gap2, closeTo(8, 0.6));
-      expect(gap1, lessThan(20)); // 카드 높이에 펴 놓던 때(약 46px)처럼 벌어지지 않는다
+      final separation = r[1].top - r[0].bottom; // ✕ ↔ ✨
+      final together = r[2].top - r[1].bottom; // ✨ ↔ 🕒
+      expect(separation, closeTo(28, 0.6));
+      expect(together, closeTo(8, 0.6));
+      // 분리: ✕ 아래 간격이 ✨·🕒 사이 간격의 3배 넘게 크다.
+      expect(separation, greaterThan(together * 3));
+      // 그래도 흩어져 보이지 않는다(카드 높이에 펴 놓던 때 약 46px보다 좁다).
+      expect(separation, lessThan(46));
+    });
+
+    testWidgets('✨·🕒는 서로 붙어 한 덩어리로 보인다', (tester) async {
+      await openCard(tester, text: '메모');
+      final analyze = rectOf(tester, analyzeKey);
+      final schedule = rectOf(tester, scheduleKey);
+      final clear = rectOf(tester, clearKey);
+      // ✕에서 ✨까지가 ✨에서 🕒까지보다 훨씬 멀다 = 눈으로 구분되는 두 그룹
+      expect(
+        analyze.top - clear.bottom,
+        greaterThan((schedule.top - analyze.bottom) * 3),
+      );
+    });
+
+    testWidgets('세 버튼 모두 같은 세로줄(오른쪽 끝)에 정렬된다', (tester) async {
+      await openCard(tester, text: '메모');
+      final lefts = [
+        for (final k in [clearKey, analyzeKey, scheduleKey])
+          rectOf(tester, k).left,
+      ];
+      expect(lefts[1], closeTo(lefts[0], 0.5));
+      expect(lefts[2], closeTo(lefts[0], 0.5));
     });
 
     testWidgets('글자 입력 영역이 버튼에 가려지지 않는다', (tester) async {
@@ -136,13 +161,20 @@ void main() {
       expect(rectOf(tester, clearKey).top - card.top, closeTo(13, 1));
     });
 
-    testWidgets('버튼이 둘일 때도 같은 간격으로 위에서부터 쌓인다', (tester) async {
+    testWidgets('버튼이 둘일 때도 ✕ 바로 아래는 28px 떼어 둔다', (tester) async {
       await openCard(tester, text: '메모', schedule: false);
       final card = tester.getRect(find.byType(InputCard));
       final first = rectOf(tester, clearKey);
       final second = rectOf(tester, analyzeKey);
       expect(first.top - card.top, closeTo(13, 1));
-      expect(second.top - first.bottom, closeTo(8, 0.6));
+      expect(second.top - first.bottom, closeTo(28, 0.6));
+    });
+
+    testWidgets('✨ 없이 🕒만 있어도 ✕ 아래는 28px 떼어 둔다', (tester) async {
+      await openCard(tester, text: '메모', analyze: false);
+      final first = rectOf(tester, clearKey);
+      final second = rectOf(tester, scheduleKey);
+      expect(second.top - first.bottom, closeTo(28, 0.6));
     });
   });
 
@@ -184,38 +216,96 @@ void main() {
       }
     });
 
-    testWidgets('✨·🕒는 ✕ 자리에서 아래로 미끄러져 내려온다(차례로)', (tester) async {
+    testWidgets('✨·🕒는 카드 오른쪽 바깥에서 옆으로 미끄러져 들어온다(차례로)', (tester) async {
       final c = await openCard(tester);
       // 최종 위치를 먼저 기록한다.
       c.text = '메모';
       await tester.pumpAndSettle();
-      final finalTop = {
+      final finalRect = {
         for (final k in [clearKey, analyzeKey, scheduleKey])
-          k: rectOf(tester, k).top,
+          k: rectOf(tester, k),
       };
+      final card = tester.getRect(find.byType(InputCard));
       c.text = '';
       await tester.pumpAndSettle();
       c.text = '메모';
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 160));
-      // 도중: ✕는 제자리, ✨·🕒는 아직 위(✕ 쪽)에 있다.
-      // ✕는 커지면서 살짝 튀어나오므로(바운스) 크기와 무관한 중심 위치로 "제자리"를 본다.
+      final midAnalyze = rectOf(tester, analyzeKey);
+      final midSchedule = rectOf(tester, scheduleKey);
+
+      // ✕는 제자리에서 커진다(바운스로 크기가 변해도 중심은 그대로).
       expect(
-        rectOf(tester, clearKey).center.dy,
-        closeTo(finalTop[clearKey]! + 17, 0.5),
+        rectOf(tester, clearKey).center,
+        finalRect[clearKey]!.center.translate(0, 0),
       );
-      final midAnalyze = rectOf(tester, analyzeKey).top;
-      final midSchedule = rectOf(tester, scheduleKey).top;
-      expect(midAnalyze, lessThan(finalTop[analyzeKey]! - 4));
-      expect(midSchedule, lessThan(finalTop[scheduleKey]! - 4));
-      // 🕒가 ✨보다 더 뒤처져(더 위에) 있다 = 차례로 내려온다.
-      final lagAnalyze = finalTop[analyzeKey]! - midAnalyze;
-      final lagSchedule = finalTop[scheduleKey]! - midSchedule;
+      // ✨·🕒는 세로 위치는 이미 최종 자리이고, 가로로만 오른쪽에 치우쳐 있다(옆에서 들어온다).
+      expect(midAnalyze.top, closeTo(finalRect[analyzeKey]!.top, 0.5));
+      expect(midSchedule.top, closeTo(finalRect[scheduleKey]!.top, 0.5));
+      expect(midAnalyze.left, greaterThan(finalRect[analyzeKey]!.left + 4));
+      expect(midSchedule.left, greaterThan(finalRect[scheduleKey]!.left + 4));
+      // 시작 지점은 카드 오른쪽 가장자리 밖이라 처음에는 둘 다 카드 밖(오른쪽)에 있다.
+      final startOffset = midAnalyze.left - finalRect[analyzeKey]!.left;
+      expect(startOffset, greaterThan(40));
+      expect(
+        midSchedule.left - finalRect[scheduleKey]!.left,
+        closeTo(startOffset, 0.5),
+      );
+
+      // 0.3초 시점: ✨는 이미 들어오는 중이고 🕒는 아직 출발 전이다 = 차례로 들어온다.
+      await tester.pump(const Duration(milliseconds: 140));
+      final lagAnalyze =
+          rectOf(tester, analyzeKey).left - finalRect[analyzeKey]!.left;
+      final lagSchedule =
+          rectOf(tester, scheduleKey).left - finalRect[scheduleKey]!.left;
+      expect(lagAnalyze, lessThan(startOffset - 3)); // ✨는 움직이는 중
+      expect(lagSchedule, closeTo(startOffset, 1.0)); // 🕒는 아직 제자리(시작 위치)
       expect(lagSchedule, greaterThan(lagAnalyze));
 
       await tester.pumpAndSettle();
       for (final k in [clearKey, analyzeKey, scheduleKey]) {
-        expect(rectOf(tester, k).top, closeTo(finalTop[k]!, 0.5));
+        expect(rectOf(tester, k).topLeft, finalRect[k]!.topLeft);
+      }
+      // 끝나면 모두 카드 안쪽에 들어와 있다.
+      for (final k in [clearKey, analyzeKey, scheduleKey]) {
+        expect(card.contains(rectOf(tester, k).center), isTrue, reason: '$k');
+      }
+    });
+
+    testWidgets('✕는 옆에서 오지 않고 제자리에서 커지며 나타난다', (tester) async {
+      final c = await openCard(tester);
+      c.text = '메모';
+      await tester.pumpAndSettle();
+      final finalCenter = rectOf(tester, clearKey).center;
+      c.text = '';
+      await tester.pumpAndSettle();
+      c.text = '메모';
+      await tester.pump();
+      for (final ms in [30, 60, 100]) {
+        await tester.pump(const Duration(milliseconds: 30));
+        expect(
+          rectOf(tester, clearKey).center.dx,
+          closeTo(finalCenter.dx, 0.5),
+          reason: '${ms}ms',
+        );
+        expect(
+          rectOf(tester, clearKey).center.dy,
+          closeTo(finalCenter.dy, 0.5),
+          reason: '${ms}ms',
+        );
+      }
+    });
+
+    testWidgets('✨·🕒는 위아래로는 움직이지 않는다(✕ 자리에서 내려오지 않는다)', (tester) async {
+      final c = await openCard(tester, text: '메모');
+      final top = rectOf(tester, analyzeKey).top;
+      c.text = '';
+      await tester.pumpAndSettle();
+      c.text = '메모';
+      await tester.pump();
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 60));
+        expect(rectOf(tester, analyzeKey).top, closeTo(top, 0.5));
       }
     });
 
@@ -366,10 +456,12 @@ void main() {
       expect(find.byKey(hintKey), findsNothing);
     });
 
-    testWidgets('말풍선을 누르면 ✨를 누른 것과 같다', (tester) async {
+    testWidgets('말풍선을 눌러도 AI 정리는 시작되지 않는다(✨ 버튼으로만)', (tester) async {
       final taps = Taps();
       await openCard(tester, taps: taps, text: '메모', hint: true);
-      await tester.tap(find.byKey(hintKey));
+      await tester.tap(find.byKey(hintKey), warnIfMissed: false);
+      expect(taps.analyze, 0);
+      await tester.tap(find.byKey(const Key('card-analyze')));
       expect(taps.analyze, 1);
     });
 

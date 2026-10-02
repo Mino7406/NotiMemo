@@ -389,12 +389,7 @@ class _InputCardState extends State<InputCard>
           // ✨(두 번째 버튼)의 가운데 높이, 그 왼쪽에 놓는다. 메모가 비면 숨는다.
           if (widget.showAiHint && widget.onAnalyze != null)
             Positioned(
-              top:
-                  _cardChipInset +
-                  _cardChipSize +
-                  _cardChipGap +
-                  _cardChipSize / 2 -
-                  17,
+              top: _cardChipInset + _chipTop(1) + _cardChipSize / 2 - 17,
               right: _cardChipInset + _cardChipSize + 4,
               child: ValueListenableBuilder<TextEditingValue>(
                 valueListenable: widget.controller,
@@ -403,7 +398,6 @@ class _InputCardState extends State<InputCard>
                     : AiHintBubble(
                         key: const Key('ai-hint'),
                         animation: _pulse,
-                        onTap: widget.onAnalyze!,
                       ),
               ),
             ),
@@ -447,14 +441,16 @@ class _InputCardState extends State<InputCard>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     for (var i = 0; i < specs.length; i++) ...[
-                      if (i > 0) const SizedBox(height: _cardChipGap),
+                      if (i > 0)
+                        SizedBox(
+                          // ✕(삭제) 바로 아래만 넓게 벌려서 ✨·🕒를 누르려다 ✕를 잘못 누르지 않게 한다.
+                          height: i == 1 ? _cardChipSeparation : _cardChipGap,
+                        ),
                       _PopChip(
                         key: specs[i].key,
                         visible: has,
                         order: i,
                         count: specs.length,
-                        // 슬라이드 시작점 = 첫 버튼(✕) 자리까지의 거리
-                        slideFrom: i * (_cardChipSize + _cardChipGap),
                         icon: specs[i].icon,
                         color: specs[i].color,
                         tooltip: specs[i].tooltip,
@@ -484,8 +480,21 @@ const Duration _inputGrowDuration = Duration(milliseconds: 220);
 const double _cardChipSize = 34;
 const double _cardChipInset = 12;
 
-/// 버튼 사이 세로 간격. 너무 붙으면 잘못 누르고, 너무 벌어지면 흩어져 보여서 이 정도로 둔다.
+/// ✨·🕒가 나타날 때 미끄러져 들어오는 시작 위치(버튼 폭의 배수, 오른쪽). 카드 오른쪽 가장자리를
+/// 벗어나 처음에는 보이지 않다가 안쪽으로 들어오면서 나타난다.
+const Offset _slideInFrom = Offset(1.6, 0);
+
+/// 같은 성격의 버튼(✨·🕒) 사이 세로 간격.
 const double _cardChipGap = 8;
+
+/// 삭제(✕)와 그 아래 기능 버튼(✨·🕒) 사이 간격. 삭제 버튼을 따로 떼어 두려고 더 넓게 둔다.
+const double _cardChipSeparation = 28;
+
+/// i번째 버튼의 위쪽 끝이 첫 버튼(✕)의 위쪽 끝에서 떨어진 거리.
+double _chipTop(int i) => i == 0
+    ? 0
+    : (_cardChipSize + _cardChipSeparation) +
+          (i - 1) * (_cardChipSize + _cardChipGap);
 
 /// [_PopChip]에 넘기는 버튼 정보.
 class _ChipSpec {
@@ -513,8 +522,8 @@ class _ChipSpec {
 /// 입력창 오른쪽의 윤곽선 버튼. 메모가 비어 있으면 숨어 있다가 입력되면 나타난다.
 ///
 /// 나타나는 순서: 0번(✕)이 **제자리에서 먼저** 커지며 나타나고, 뒤이어 1번·2번이
-/// **0번 자리에서 아래로 미끄러져** 각자 자리로 간다(시차를 두고). 숨을 때는 모두 한꺼번에
-/// 빠르게 사라진다.
+/// **카드 오른쪽 바깥에서 옆으로 미끄러져 들어와** 각자 자리에 멈춘다(시차를 두고). ✕와 ✨·🕒는
+/// 떨어져 있는 별도 그룹이라 ✕ 자리에서 내려오지 않는다. 숨을 때는 모두 한꺼번에 빠르게 사라진다.
 class _PopChip extends StatelessWidget {
   final bool visible;
 
@@ -524,8 +533,6 @@ class _PopChip extends StatelessWidget {
   /// 전체 버튼 수.
   final int count;
 
-  /// 이 버튼이 첫 버튼 자리에서 아래로 떨어져 있는 거리(px). 슬라이드 시작 위치를 정한다.
-  final double slideFrom;
   final IconData icon;
   final Color color;
   final String tooltip;
@@ -538,7 +545,6 @@ class _PopChip extends StatelessWidget {
     required this.visible,
     required this.order,
     required this.count,
-    required this.slideFrom,
     required this.icon,
     required this.color,
     required this.tooltip,
@@ -576,12 +582,13 @@ class _PopChip extends StatelessWidget {
     return IgnorePointer(
       ignoring: !visible,
       child: AnimatedSlide(
-        // 0번은 제자리, 나머지는 0번 자리(위쪽)에서 내려온다.
-        offset: visible ? Offset.zero : Offset(0, -slideFrom / _cardChipSize),
+        // 0번(✕)은 제자리에서 커지며 나타나고, 나머지는 카드 오른쪽 바깥(카드 가장자리에서
+        // 잘려 보이지 않는 곳)에서 옆으로 미끄러져 들어온다.
+        offset: visible || order == 0 ? Offset.zero : _slideInFrom,
         duration: total,
         curve: slideCurve,
         child: AnimatedScale(
-          scale: visible ? 1 : (order == 0 ? 0.5 : 0.85),
+          scale: visible || order != 0 ? 1 : 0.5,
           duration: total,
           curve: scaleCurve,
           child: AnimatedOpacity(
@@ -636,12 +643,13 @@ class _PopChip extends StatelessWidget {
 }
 
 /// ✨ 버튼을 가리키는 반투명 안내 말풍선. [animation]에 맞춰 흐릿했다 또렷해지길 반복한다.
-/// 눌러도 되고(그러면 [onTap]이 실행된다) 가만히 둬도 된다.
+///
+/// **누를 수 없는 안내**다. AI 정리는 ✨ 버튼으로만 시작한다. 말풍선은 글자 위에 떠 있으므로 터치를
+/// 가로채지 않게 해서(IgnorePointer), 누르면 그 아래의 입력창이 그대로 반응한다.
 class AiHintBubble extends StatelessWidget {
   final Animation<double> animation;
-  final VoidCallback onTap;
 
-  const AiHintBubble({super.key, required this.animation, required this.onTap});
+  const AiHintBubble({super.key, required this.animation});
 
   static const text = 'AI가 자동으로 분석해줘요!';
 
@@ -660,9 +668,7 @@ class AiHintBubble extends StatelessWidget {
           child: child,
         );
       },
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
+      child: IgnorePointer(
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

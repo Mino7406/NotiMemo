@@ -179,7 +179,7 @@ class AppMenuDrawer extends StatelessWidget {
                   ),
                   item(
                     icon: Icons.photo_camera_outlined,
-                    label: '사진으로 메모 입력',
+                    label: '사진으로 메모 가져오기',
                     onTap: isBusy ? () {} : onPhoto,
                   ),
                   section('예약'),
