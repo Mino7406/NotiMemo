@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 import '../utils/ocr_text.dart';
@@ -9,18 +10,28 @@ enum PhotoSource { camera, gallery }
 class OcrService {
   static final _picker = ImagePicker();
 
+  /// 테스트에서 실제 카메라·ML Kit 대신 쓰는 대체 함수. 앱에서는 항상 null이다.
+  @visibleForTesting
+  static Future<String?> Function(PhotoSource source)? debugReader;
+
   /// 사진을 고르고 인식한 글자를 돌려준다.
   /// 사용자가 사진 선택을 취소하면 null, 글자가 없으면 빈 문자열이다.
   /// 사진 원본은 저장하지 않고, 임시 파일은 인식 직후 지운다.
   static Future<String?> readFromPhoto(PhotoSource source) async {
+    final fake = debugReader;
+    if (fake != null) return fake(source);
     final picked = await _picker.pickImage(
-      source: source == PhotoSource.camera ? ImageSource.camera : ImageSource.gallery,
+      source: source == PhotoSource.camera
+          ? ImageSource.camera
+          : ImageSource.gallery,
     );
     if (picked == null) return null;
 
     final recognizer = TextRecognizer(script: TextRecognitionScript.korean);
     try {
-      final result = await recognizer.processImage(InputImage.fromFilePath(picked.path));
+      final result = await recognizer.processImage(
+        InputImage.fromFilePath(picked.path),
+      );
       return cleanOcrText(result.text);
     } finally {
       await recognizer.close();

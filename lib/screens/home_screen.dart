@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/memo_analysis.dart';
 import '../services/ai_classifier.dart';
@@ -11,6 +12,7 @@ import '../storage/memo_storage.dart';
 import '../storage/tutorial_storage.dart';
 import '../theme/app_theme.dart';
 import '../utils/analysis_labels.dart';
+import '../utils/rule_classifier.dart';
 import '../utils/due_parser.dart';
 import '../utils/ocr_text.dart';
 import '../utils/reminder_time.dart';
@@ -23,6 +25,7 @@ import 'settings_screen.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/history_sheet.dart';
 import '../widgets/home_widgets.dart';
+import '../widgets/notice_button.dart';
 import '../widgets/photo_source_sheet.dart';
 import '../widgets/scheduled_sheet.dart';
 import '../widgets/schedule_sheet.dart';
@@ -48,6 +51,18 @@ class _HomeScreenState extends State<HomeScreen>
   bool _isPinning = false;
   bool _isReadingPhoto = false;
   bool _isAnalyzing = false;
+
+  /// 사진에서 글자를 가져온 직후, ✨ 버튼을 가리키는 안내를 보여주는 중인지.
+  bool _aiHint = false;
+  Timer? _aiHintTimer;
+
+  /// 지금 떠 있는 "요약으로 바꿨어요 [되돌리기]" 토스트와, 그 토스트가 유효한 메모 글(요약).
+  /// 메모가 그 글에서 달라지면(지움·수정·고정·예약) 되돌릴 대상이 사라진 것이므로 토스트를 닫는다.
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? _undoToast;
+  String? _undoExpectedText;
+
+  /// 분석을 적용하지 않은 메모에도 기본 분석으로 분류를 채울지(설정의 자동 분류).
+  bool _classify = true;
 
   /// 사용자가 "적용"한 자동 정리 결과와 그 대상 메모(공백 정리한 글). 메모가 바뀌면 무효.
   final _inputFocus = FocusNode();
@@ -78,6 +93,7 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _controller.addListener(_dismissStaleUndo);
     _load().then((_) => _maybeShowTutorial());
     NotificationService.requestPermission();
     NotificationService.listenForChanges(_syncNotificationState);
@@ -87,6 +103,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    _controller.removeListener(_dismissStaleUndo);
+    _aiHintTimer?.cancel();
     _animCtrl.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
@@ -132,9 +150,25 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  /// 분류가 없는 옛 내역을 기본 분석으로 채워 저장한다([_classify]가 켜져 있을 때만).
+  Future<List<MemoEntry>> _backfilled(List<MemoEntry> list) async {
+    if (!_classify) return list;
+    final result = backfillClassification(list, DateTime.now());
+    if (result.changed) await MemoStorage.saveList(result.list);
+    return result.list;
+  }
+
+  /// 설정에서 돌아왔을 때 자동 분류 설정을 다시 읽고, 켜졌다면 빈 내역을 채운다.
+  Future<void> _refreshClassify() async {
+    _classify = await AiStorage.classificationEnabled();
+    final list = await _backfilled(await MemoStorage.getList());
+    if (mounted) setState(() => _memoList = list);
+  }
+
   Future<void> _load() async {
     final current = await MemoStorage.getCurrent();
-    final list = await MemoStorage.getList();
+    _classify = await AiStorage.classificationEnabled();
+    final list = await _backfilled(await MemoStorage.getList());
     final pinned = await MemoStorage.getPinnedIds();
     final scheduled = await MemoStorage.getScheduled();
     setState(() {
@@ -175,22 +209,43 @@ class _HomeScreenState extends State<HomeScreen>
   /// 적용해 둔 자동 정리 결과를 [entry]에 담는다(메모가 그대로일 때만).
   MemoEntry _withAnalysis(MemoEntry entry, String memo) {
     final a = _analysis;
-    if (a == null || _analyzedMemo != memo) return entry;
+    if (a == null || _analyzedMemo != memo) {
+      // ✨를 적용하지 않았어도 분류가 비어 있지 않게 기본 분석으로 채운다.
+      return _classify ? withRuleClassification(entry, DateTime.now()) : entry;
+    }
     return entry.copyWith(
       category: a.category,
       priority: a.priority,
-      summary: a.summary.isEmpty ? null : a.summary,
+      // 메모 자체가 요약으로 바뀐 경우에는 같은 내용을 한 번 더 저장하지 않는다.
+      summary: a.summary.isEmpty || a.summary.trim() == memo ? null : a.summary,
     );
   }
 
   void _clearAnalysis() {
     _analysis = null;
     _analyzedMemo = null;
+    _hideAiHint(); // 지우거나 고정·예약해서 새로 시작하면 안내도 끝낸다(setState 없이 값만)
+  }
+
+  /// ✨ 안내를 켠다. 사용자가 누르지 않아도 [seconds]초 뒤에 저절로 꺼진다.
+  void _showAiHint({int seconds = 12}) {
+    _aiHintTimer?.cancel();
+    setState(() => _aiHint = true);
+    _aiHintTimer = Timer(Duration(seconds: seconds), () {
+      if (mounted) setState(() => _aiHint = false);
+    });
+  }
+
+  void _hideAiHint() {
+    _aiHintTimer?.cancel();
+    _aiHint = false;
   }
 
   /// ✨ 자동 정리: 동의 확인 → 분석(AI, 안 되면 기본) → 결과 시트 → 적용.
   Future<void> _analyze() async {
     if (_isAnalyzing) return;
+    // 안내 말풍선은 ✨를 눌렀다면(또는 말풍선을 눌렀다면) 역할을 다한 것이다.
+    if (_aiHint) setState(_hideAiHint);
     final memo = _controller.text.trim();
     if (memo.isEmpty) {
       _askForMemo();
@@ -228,9 +283,13 @@ class _HomeScreenState extends State<HomeScreen>
       leadMinutes: leadMinutes,
     );
     if (decision == null || !mounted) return;
+    // 요약이 있으면 새 메모를 그 요약으로 바꾼다. 원문은 "되돌리기"로 되살릴 수 있다.
+    final summary = analysis.summary.trim();
+    final replaced = summary.isNotEmpty && summary != memo;
+    if (replaced) _setMemoText(summary);
     setState(() {
       _analysis = analysis;
-      _analyzedMemo = memo;
+      _analyzedMemo = replaced ? summary : memo;
     });
     if (decision == AnalysisDecision.applyAndSchedule) {
       final due = analysis.due;
@@ -243,9 +302,70 @@ class _HomeScreenState extends State<HomeScreen>
                 leadMinutes: leadMinutes,
               ).remindAt,
       );
+      // 예약하지 않고 닫아서 메모가 그대로 남아 있다면 되돌릴 수 있게 알린다.
+      if (replaced && mounted && _controller.text.trim() == summary) {
+        _toastSummaryApplied(memo, summary, analysis);
+      }
+    } else if (replaced) {
+      _toastSummaryApplied(memo, summary, analysis);
     } else {
       _toast('자동 정리를 적용했어요.');
     }
+  }
+
+  /// 입력창의 글을 바꾸고 임시 저장도 갱신한다(커서는 끝으로).
+  void _setMemoText(String text) {
+    _controller.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+    MemoStorage.setCurrent(text);
+  }
+
+  void _toastSummaryApplied(String original, String summary, MemoAnalysis a) {
+    final toast = showAppToast(
+      context,
+      '새 메모를 요약으로 바꿨어요.',
+      actionLabel: '되돌리기',
+      duration: const Duration(seconds: 6),
+      onAction: () => _undoSummary(original, summary, a),
+    );
+    _undoToast = toast;
+    _undoExpectedText = summary;
+    // 저절로 닫히거나 다른 토스트로 바뀌면 추적을 끝낸다(남의 토스트를 닫지 않도록).
+    toast.closed.then((_) {
+      if (identical(_undoToast, toast)) {
+        _undoToast = null;
+        _undoExpectedText = null;
+      }
+    });
+  }
+
+  /// 메모가 "되돌리기" 대상(요약)에서 달라졌으면 그 토스트를 닫는다. 메모를 다 지웠거나,
+  /// 고쳤거나, 고정·예약해서 비워진 경우다. 글이 그대로면(커서만 움직인 경우 등) 아무것도 안 한다.
+  void _dismissStaleUndo() {
+    final toast = _undoToast;
+    final expected = _undoExpectedText;
+    if (toast == null || expected == null) return;
+    if (_controller.text.trim() == expected) return;
+    _undoToast = null;
+    _undoExpectedText = null;
+    toast.close();
+  }
+
+  /// 요약으로 바꾼 메모를 원래 글로 되돌린다. 그 사이 요약을 고쳤다면 사용자의 수정을
+  /// 덮어쓰지 않도록 되돌리지 않는다.
+  void _undoSummary(String original, String summary, MemoAnalysis a) {
+    if (!mounted) return;
+    if (_controller.text.trim() != summary) {
+      _toast('요약을 고쳐서 되돌릴 수 없어요.', isError: true);
+      return;
+    }
+    _setMemoText(original);
+    setState(() {
+      _analysis = a;
+      _analyzedMemo = original; // 분류·우선순위는 원문에도 그대로 적용된다
+    });
   }
 
   /// 자동 분류를 끈 ✨: 메모에서 시각만 찾아 여유 시간을 뺀 값으로 예약 시트를 연다.
@@ -298,7 +418,8 @@ class _HomeScreenState extends State<HomeScreen>
         selection: TextSelection.collapsed(offset: merged.length),
       );
       MemoStorage.setCurrent(merged);
-      _toast('글자를 불러왔어요. 고친 뒤 고정해보세요.');
+      _toast('사진으로부터 글자를 불러왔어요.');
+      _showAiHint(); // ✨를 눌러 AI로 정리해 보라고 가리킨다
     } catch (e) {
       if (mounted) _toast('글자를 읽지 못했어요: $e', isError: true);
     } finally {
@@ -397,6 +518,20 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
+  /// 빨간 ✕: 지울 글을 보여주며 한 번 더 묻고, 확인하면 새 메모와 분석 결과를 비운다.
+  Future<void> _confirmClearMemo() async {
+    final text = _controller.text;
+    if (text.trim().isEmpty) return;
+    final ok = await showClearMemoDialog(context, text);
+    if (!ok || !mounted) return;
+    _controller.clear();
+    MemoStorage.setCurrent('');
+    setState(() {
+      _editingId = null;
+      _clearAnalysis();
+    });
+  }
+
   /// 정확한 알람 권한이 없으면 안내하고 설정 화면을 열어준다. 거절해도 예약은 계속한다(정확도가 낮아짐).
   Future<void> _ensureExactAlarm() async {
     if (await NotificationService.canScheduleExact() || !mounted) return;
@@ -409,13 +544,14 @@ class _HomeScreenState extends State<HomeScreen>
           '허용하지 않으면 몇 분 늦게 고정될 수 있어요.',
         ),
         actions: [
-          TextButton(
+          NoticeButton(
+            label: '나중에',
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('나중에'),
           ),
-          TextButton(
+          NoticeButton(
+            label: '설정 열기',
+            color: AppColors.gradStart,
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('설정 열기'),
           ),
         ],
       ),
@@ -517,15 +653,18 @@ class _HomeScreenState extends State<HomeScreen>
         onSchedule: _scheduleNotification,
         onScheduledList: _openScheduled,
         onHistory: _showHistory,
-        onSettings: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => SettingsScreen(
-              currentMode: widget.currentMode,
-              onThemeChanged: widget.onThemeChanged,
+        onSettings: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SettingsScreen(
+                currentMode: widget.currentMode,
+                onThemeChanged: widget.onThemeChanged,
+              ),
             ),
-          ),
-        ),
+          );
+          await _refreshClassify();
+        },
         onTutorial: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const TutorialScreen()),
@@ -567,18 +706,12 @@ class _HomeScreenState extends State<HomeScreen>
                           focusNode: _inputFocus,
                           onAnalyze: _analyze,
                           isAnalyzing: _isAnalyzing,
+                          showAiHint: _aiHint,
                           onSchedule: _scheduleNotification,
                           isDark: isDark,
                           textColor: textColor,
                           subColor: subColor,
-                          onClear: () {
-                            _controller.clear();
-                            MemoStorage.setCurrent('');
-                            setState(() {
-                              _editingId = null;
-                              _clearAnalysis();
-                            });
-                          },
+                          onClear: _confirmClearMemo,
                         ),
                         if (_isAnalyzing || _isReadingPhoto)
                           Padding(

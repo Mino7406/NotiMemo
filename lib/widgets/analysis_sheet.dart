@@ -141,6 +141,12 @@ class AnalysisSheet extends StatelessWidget {
                 key: const Key('summary-text'),
                 style: TextStyle(fontSize: 14.5, color: textColor, height: 1.5),
               ),
+              const SizedBox(height: 6),
+              Text(
+                '적용하면 새 메모가 이 요약으로 바뀌어요. 적용한 뒤 "되돌리기"로 원래 글을 되살릴 수 있어요.',
+                key: const Key('summary-replace-note'),
+                style: TextStyle(fontSize: 12, color: subColor, height: 1.45),
+              ),
             ],
             if (due != null) ...[
               const SizedBox(height: 16),

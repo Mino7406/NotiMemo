@@ -41,7 +41,9 @@ class TopBar extends StatelessWidget {
           AnimatedIconButton(
             key: const Key('menu-button'),
             icon: Icons.menu_rounded,
-            color: subColor,
+            color: textColor,
+            size: 28,
+            outlined: true,
             onTap: () => Scaffold.of(context).openEndDrawer(),
           ),
         ],
@@ -55,11 +57,19 @@ class AnimatedIconButton extends StatefulWidget {
   final Color color;
   final VoidCallback onTap;
 
+  /// 아이콘 크기.
+  final double size;
+
+  /// true면 윤곽선 있는 둥근 네모 버튼(터치 영역이 눈에 보인다). 최소 터치 영역 48dp.
+  final bool outlined;
+
   const AnimatedIconButton({
     super.key,
     required this.icon,
     required this.color,
     required this.onTap,
+    this.size = 22,
+    this.outlined = false,
   });
 
   @override
@@ -81,11 +91,31 @@ class _AnimatedIconButtonState extends State<AnimatedIconButton> {
       child: AnimatedScale(
         scale: _pressed ? 0.8 : 1.0,
         duration: const Duration(milliseconds: 100),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Icon(widget.icon, color: widget.color, size: 22),
+        child: widget.outlined ? _outlined(context) : _plain(),
+      ),
+    );
+  }
+
+  Widget _plain() => Padding(
+    padding: const EdgeInsets.all(12),
+    child: Icon(widget.icon, color: widget.color, size: widget.size),
+  );
+
+  Widget _outlined(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: 52,
+      height: 52,
+      margin: const EdgeInsets.only(right: 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppColors.borderDark : AppColors.borderLight,
+          width: 1.5,
         ),
       ),
+      child: Icon(widget.icon, color: widget.color, size: widget.size),
     );
   }
 }
@@ -186,6 +216,10 @@ class InputCard extends StatefulWidget {
   final bool isAnalyzing;
   final VoidCallback? onSchedule;
 
+  /// true면 ✨ 버튼을 가리키는 반투명 깜빡이는 안내 말풍선을 보여주고 ✨도 같은 박자로 맥박친다.
+  /// 사진에서 글자를 가져온 직후처럼 "다음엔 AI 정리를 눌러 보라"고 알려줄 때 쓴다.
+  final bool showAiHint;
+
   const InputCard({
     super.key,
     required this.controller,
@@ -197,15 +231,23 @@ class InputCard extends StatefulWidget {
     this.onAnalyze,
     this.isAnalyzing = false,
     this.onSchedule,
+    this.showAiHint = false,
   });
 
   @override
   State<InputCard> createState() => _InputCardState();
 }
 
-class _InputCardState extends State<InputCard> {
+class _InputCardState extends State<InputCard>
+    with SingleTickerProviderStateMixin {
   late final _focusNode = widget.focusNode ?? FocusNode();
   bool _focused = false;
+
+  /// 안내 말풍선·✨의 깜빡임/맥박 박자(0→1→0 반복).
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1000),
+  );
 
   @override
   void initState() {
@@ -213,10 +255,27 @@ class _InputCardState extends State<InputCard> {
     _focusNode.addListener(
       () => setState(() => _focused = _focusNode.hasFocus),
     );
+    _syncPulse();
+  }
+
+  @override
+  void didUpdateWidget(InputCard old) {
+    super.didUpdateWidget(old);
+    if (old.showAiHint != widget.showAiHint) _syncPulse();
+  }
+
+  void _syncPulse() {
+    if (widget.showAiHint) {
+      _pulse.repeat(reverse: true);
+    } else {
+      _pulse.stop();
+      _pulse.value = 0;
+    }
   }
 
   @override
   void dispose() {
+    _pulse.dispose();
     if (widget.focusNode == null) _focusNode.dispose();
     super.dispose();
   }
@@ -288,74 +347,120 @@ class _InputCardState extends State<InputCard> {
                   ],
                 ),
               ),
-              TextField(
-                controller: widget.controller,
-                focusNode: _focusNode,
-                maxLines: 6,
-                minLines: 6,
-                textAlignVertical: TextAlignVertical.top,
-                onChanged: (v) => MemoStorage.setCurrent(v),
-                style: TextStyle(
-                  fontSize: 16,
-                  height: 1.6,
-                  color: widget.textColor,
-                ),
-                decoration: InputDecoration(
-                  hintText: '기억해야 할 것을 입력하세요...',
-                  hintStyle: TextStyle(
-                    color: widget.isDark
-                        ? const Color(0xFF3D3F52)
-                        : const Color(0xFFD1D5DB),
+              AnimatedSize(
+                // 사진 글자나 긴 글이 들어와 높이가 바뀔 때 카드가 갑자기 튀지 않게 부드럽게 늘어난다.
+                duration: _inputGrowDuration,
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: TextField(
+                  controller: widget.controller,
+                  focusNode: _focusNode,
+                  // 최소 6줄에서 시작해 글 길이에 맞춰 늘어난다(제한 없음). 넘치는 건 화면 스크롤로 본다.
+                  maxLines: null,
+                  minLines: _inputMinLines,
+                  textAlignVertical: TextAlignVertical.top,
+                  onChanged: (v) => MemoStorage.setCurrent(v),
+                  style: TextStyle(
                     fontSize: 16,
+                    height: 1.6,
+                    color: widget.textColor,
                   ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.fromLTRB(16, 10, 56, 0),
+                  decoration: InputDecoration(
+                    hintText: '기억해야 할 것을 입력하세요...',
+                    hintStyle: TextStyle(
+                      color: widget.isDark
+                          ? const Color(0xFF3D3F52)
+                          : const Color(0xFFD1D5DB),
+                      fontSize: 16,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.fromLTRB(
+                      16,
+                      10,
+                      _cardChipSize + _cardChipInset * 2,
+                      0,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
             ],
           ),
+          // ✨(두 번째 버튼)의 가운데 높이, 그 왼쪽에 놓는다. 메모가 비면 숨는다.
+          if (widget.showAiHint && widget.onAnalyze != null)
+            Positioned(
+              top:
+                  _cardChipInset +
+                  _cardChipSize +
+                  _cardChipGap +
+                  _cardChipSize / 2 -
+                  17,
+              right: _cardChipInset + _cardChipSize + 4,
+              child: ValueListenableBuilder<TextEditingValue>(
+                valueListenable: widget.controller,
+                builder: (_, value, _) => value.text.isEmpty
+                    ? const SizedBox.shrink()
+                    : AiHintBubble(
+                        key: const Key('ai-hint'),
+                        animation: _pulse,
+                        onTap: widget.onAnalyze!,
+                      ),
+              ),
+            ),
           Positioned(
-            top: 10,
-            right: 12,
+            // 위쪽 모서리에서 고정 간격으로 쌓는다.
+            top: _cardChipInset,
+            right: _cardChipInset,
+            width: _cardChipSize,
             child: ValueListenableBuilder<TextEditingValue>(
               valueListenable: widget.controller,
               builder: (_, value, _) {
                 final has = value.text.isNotEmpty;
+                final specs = <_ChipSpec>[
+                  _ChipSpec(
+                    key: const Key('clear-memo'),
+                    icon: Icons.close_rounded,
+                    color: AppColors.danger,
+                    tooltip: '새 메모 지우기',
+                    onTap: widget.onClear,
+                  ),
+                  if (widget.onAnalyze != null)
+                    _ChipSpec(
+                      key: const Key('card-analyze'),
+                      icon: Icons.auto_awesome_outlined,
+                      color: AppColors.gradStart,
+                      tooltip: 'AI 자동 정리',
+                      loading: widget.isAnalyzing,
+                      pulse: widget.showAiHint ? _pulse : null,
+                      onTap: widget.isAnalyzing ? () {} : widget.onAnalyze!,
+                    ),
+                  if (widget.onSchedule != null)
+                    _ChipSpec(
+                      key: const Key('card-schedule'),
+                      icon: Icons.schedule_rounded,
+                      color: AppColors.gradStart,
+                      tooltip: '예약 생성',
+                      onTap: widget.onSchedule!,
+                    ),
+                ];
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _PopChip(
-                      key: const Key('clear-memo'),
-                      visible: has,
-                      icon: Icons.close_rounded,
-                      color: AppColors.danger,
-                      tooltip: '새 메모 지우기',
-                      onTap: widget.onClear,
-                    ),
-                    if (widget.onAnalyze != null) ...[
-                      const SizedBox(height: 8),
+                    for (var i = 0; i < specs.length; i++) ...[
+                      if (i > 0) const SizedBox(height: _cardChipGap),
                       _PopChip(
-                        key: const Key('card-analyze'),
+                        key: specs[i].key,
                         visible: has,
-                        icon: Icons.auto_awesome_outlined,
-                        color: AppColors.gradStart,
-                        tooltip: 'AI 자동 정리',
-                        loading: widget.isAnalyzing,
-                        milliseconds: 460,
-                        onTap: widget.isAnalyzing ? () {} : widget.onAnalyze!,
-                      ),
-                    ],
-                    if (widget.onSchedule != null) ...[
-                      const SizedBox(height: 8),
-                      _PopChip(
-                        key: const Key('card-schedule'),
-                        visible: has,
-                        icon: Icons.schedule_rounded,
-                        color: AppColors.gradStart,
-                        tooltip: '예약 생성',
-                        milliseconds: 540,
-                        onTap: widget.onSchedule!,
+                        order: i,
+                        count: specs.length,
+                        // 슬라이드 시작점 = 첫 버튼(✕) 자리까지의 거리
+                        slideFrom: i * (_cardChipSize + _cardChipGap),
+                        icon: specs[i].icon,
+                        color: specs[i].color,
+                        tooltip: specs[i].tooltip,
+                        loading: specs[i].loading,
+                        pulse: specs[i].pulse,
+                        onTap: specs[i].onTap,
                       ),
                     ],
                   ],
@@ -369,70 +474,221 @@ class _InputCardState extends State<InputCard> {
   }
 }
 
-/// 입력창 오른쪽 위의 작은 테두리 버튼. 메모가 비어 있으면 숨어 있다가, 입력되면 아래에서 통통 튀며 올라온다.
-/// [milliseconds]가 길수록 늦게 올라와서 여러 개를 두면 차례로 나타난다.
-class _PopChip extends StatelessWidget {
-  final bool visible;
+/// 입력창 오른쪽 버튼의 크기와 카드 안쪽 여백.
+/// 새 메모 입력창의 최소 줄 수(글이 이보다 길어지면 그만큼 늘어난다).
+const int _inputMinLines = 6;
+
+/// 입력창이 글 길이에 맞춰 늘어나고 줄어드는 시간. 과하지 않게 짧게 둔다.
+const Duration _inputGrowDuration = Duration(milliseconds: 220);
+
+const double _cardChipSize = 34;
+const double _cardChipInset = 12;
+
+/// 버튼 사이 세로 간격. 너무 붙으면 잘못 누르고, 너무 벌어지면 흩어져 보여서 이 정도로 둔다.
+const double _cardChipGap = 8;
+
+/// [_PopChip]에 넘기는 버튼 정보.
+class _ChipSpec {
+  final Key key;
   final IconData icon;
   final Color color;
   final String tooltip;
   final bool loading;
-  final int milliseconds;
   final VoidCallback onTap;
 
-  const _PopChip({
-    super.key,
-    required this.visible,
+  /// 주목시킬 때 버튼을 살짝 키웠다 줄이는 박자. 없으면 가만히 있는다.
+  final Animation<double>? pulse;
+
+  const _ChipSpec({
+    required this.key,
     required this.icon,
     required this.color,
     required this.tooltip,
     required this.onTap,
     this.loading = false,
-    this.milliseconds = 380,
+    this.pulse,
   });
+}
+
+/// 입력창 오른쪽의 윤곽선 버튼. 메모가 비어 있으면 숨어 있다가 입력되면 나타난다.
+///
+/// 나타나는 순서: 0번(✕)이 **제자리에서 먼저** 커지며 나타나고, 뒤이어 1번·2번이
+/// **0번 자리에서 아래로 미끄러져** 각자 자리로 간다(시차를 두고). 숨을 때는 모두 한꺼번에
+/// 빠르게 사라진다.
+class _PopChip extends StatelessWidget {
+  final bool visible;
+
+  /// 위에서부터의 순서(0 = ✕).
+  final int order;
+
+  /// 전체 버튼 수.
+  final int count;
+
+  /// 이 버튼이 첫 버튼 자리에서 아래로 떨어져 있는 거리(px). 슬라이드 시작 위치를 정한다.
+  final double slideFrom;
+  final IconData icon;
+  final Color color;
+  final String tooltip;
+  final bool loading;
+  final VoidCallback onTap;
+  final Animation<double>? pulse;
+
+  const _PopChip({
+    super.key,
+    required this.visible,
+    required this.order,
+    required this.count,
+    required this.slideFrom,
+    required this.icon,
+    required this.color,
+    required this.tooltip,
+    required this.onTap,
+    this.loading = false,
+    this.pulse,
+  });
+
+  /// 나타나는 전체 시간(ms). 첫 버튼이 먼저 끝나고 나머지가 차례로 이어진다.
+  static const showMs = 780;
+  static const hideMs = 180;
 
   @override
   Widget build(BuildContext context) {
-    final d = Duration(milliseconds: milliseconds);
+    final total = Duration(milliseconds: visible ? showMs : hideMs);
+    // 순서별 시작·끝 시점(전체 시간 대비). 0번은 곧바로, 1번·2번은 뒤이어 시작한다.
+    final begin = const [0.0, 0.24, 0.42][order.clamp(0, 2)];
+    final end = const [0.34, 0.74, 1.0][order.clamp(0, 2)];
+    final fadeEnd = begin + (end - begin) * 0.6;
+
+    final slideCurve = visible
+        ? Interval(begin, end, curve: Curves.easeOutCubic)
+        : Curves.easeIn;
+    final scaleCurve = visible
+        ? Interval(
+            begin,
+            end,
+            curve: order == 0 ? Curves.easeOutBack : Curves.easeOutCubic,
+          )
+        : Curves.easeIn;
+    final fadeCurve = visible
+        ? Interval(begin, fadeEnd, curve: Curves.easeOut)
+        : Curves.easeIn;
+
     return IgnorePointer(
       ignoring: !visible,
       child: AnimatedSlide(
-        offset: visible ? Offset.zero : const Offset(0, 0.9),
-        duration: d,
-        curve: Curves.easeOutBack,
+        // 0번은 제자리, 나머지는 0번 자리(위쪽)에서 내려온다.
+        offset: visible ? Offset.zero : Offset(0, -slideFrom / _cardChipSize),
+        duration: total,
+        curve: slideCurve,
         child: AnimatedScale(
-          scale: visible ? 1 : 0.6,
-          duration: d,
-          curve: Curves.easeOutBack,
+          scale: visible ? 1 : (order == 0 ? 0.5 : 0.85),
+          duration: total,
+          curve: scaleCurve,
           child: AnimatedOpacity(
             opacity: visible ? 1 : 0,
-            duration: Duration(milliseconds: milliseconds - 160),
+            duration: total,
+            curve: fadeCurve,
             child: Tooltip(
               message: tooltip,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: onTap,
-                child: Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: color.withAlpha(18),
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(color: color, width: 1.4),
+                child: _pulsing(
+                  Container(
+                    width: _cardChipSize,
+                    height: _cardChipSize,
+                    decoration: BoxDecoration(
+                      color: color.withAlpha(18),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: color, width: 1.4),
+                    ),
+                    child: loading
+                        ? Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: color,
+                            ),
+                          )
+                        : Icon(icon, size: 19, color: color),
                   ),
-                  child: loading
-                      ? Padding(
-                          padding: const EdgeInsets.all(7),
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: color,
-                          ),
-                        )
-                      : Icon(icon, size: 17, color: color),
                 ),
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// [pulse]가 있으면 버튼을 박자에 맞춰 살짝 키웠다 줄인다.
+  Widget _pulsing(Widget child) {
+    final p = pulse;
+    if (p == null) return child;
+    return ScaleTransition(
+      scale: Tween<double>(
+        begin: 1.0,
+        end: 1.16,
+      ).animate(CurvedAnimation(parent: p, curve: Curves.easeInOut)),
+      child: child,
+    );
+  }
+}
+
+/// ✨ 버튼을 가리키는 반투명 안내 말풍선. [animation]에 맞춰 흐릿했다 또렷해지길 반복한다.
+/// 눌러도 되고(그러면 [onTap]이 실행된다) 가만히 둬도 된다.
+class AiHintBubble extends StatelessWidget {
+  final Animation<double> animation;
+  final VoidCallback onTap;
+
+  const AiHintBubble({super.key, required this.animation, required this.onTap});
+
+  static const text = 'AI가 자동으로 분석해줘요!';
+
+  /// 가장 흐릴 때와 가장 또렷할 때의 투명도.
+  static const minOpacity = 0.3;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (_, child) {
+        final t = Curves.easeInOut.transform(animation.value);
+        return Opacity(
+          key: const Key('ai-hint-opacity'),
+          opacity: minOpacity + (1 - minOpacity) * t,
+          child: child,
+        );
+      },
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: AppColors.gradStart.withAlpha(30),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.gradStart, width: 1.2),
+              ),
+              child: const Text(
+                text,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.gradStart,
+                ),
+              ),
+            ),
+            // ✨ 버튼 쪽(오른쪽)을 가리키는 삼각형
+            const Icon(
+              Icons.play_arrow_rounded,
+              size: 18,
+              color: AppColors.gradStart,
+            ),
+          ],
         ),
       ),
     );

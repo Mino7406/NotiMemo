@@ -138,6 +138,18 @@ void main() {
       expect(find.textContaining('VPN'), findsNothing); // VPN 안내는 동의 창에만 둔다
     });
 
+    testWidgets('요약이 있으면 "적용하면 메모가 요약으로 바뀐다"는 안내가 보인다', (tester) async {
+      await open(tester, analysis());
+      expect(find.byKey(const Key('summary-replace-note')), findsOneWidget);
+      expect(find.textContaining('요약으로 바뀌어요'), findsOneWidget);
+      expect(find.textContaining('되돌리기'), findsOneWidget);
+    });
+
+    testWidgets('요약이 없으면 그 안내도 없다', (tester) async {
+      await open(tester, analysis(summary: ''));
+      expect(find.byKey(const Key('summary-replace-note')), findsNothing);
+    });
+
     testWidgets('요약이 비면 요약 항목을 숨기고, 시각이 없으면 예약 항목도 숨긴다', (tester) async {
       await open(tester, analysis(summary: ''));
       expect(find.text('요약'), findsNothing);
