@@ -252,7 +252,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 36),
                     Center(
                       child: Text(
-                        'made by Mino7406',
+                        'made by Mino7406, VVYUNS',
                         style: TextStyle(
                           fontSize: 12,
                           color: subColor.withAlpha(120),

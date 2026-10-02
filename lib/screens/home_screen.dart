@@ -826,90 +826,111 @@ class _HomeScreenState extends State<HomeScreen>
               children: [
                 TopBar(subColor: subColor, textColor: textColor),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        HeroText(textColor: textColor, subColor: subColor),
-                        const SizedBox(height: 24),
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 250),
-                          curve: Curves.easeInOut,
-                          child: _hasActiveNotification
-                              ? Column(
-                                  children: [
-                                    ActiveBanner(
-                                      isDark: isDark,
-                                      count: _pinnedIds.length,
-                                    ),
-                                    const SizedBox(height: 10),
-                                  ],
-                                )
-                              : const SizedBox.shrink(),
+                  // 내용이 화면보다 짧으면 남는 아래쪽 빈 자리를 문구 영역으로 쓴다
+                  child: LayoutBuilder(
+                    builder: (context, box) => SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: box.maxHeight - 4,
                         ),
-                        InputCard(
-                          key: const Key('input-card'),
-                          controller: _controller,
-                          focusNode: _inputFocus,
-                          onAnalyze: _analyze,
-                          isAnalyzing: _isAnalyzing,
-                          showAiHint: _aiHint,
-                          onSchedule: _scheduleNotification,
-                          isDark: isDark,
-                          textColor: textColor,
-                          subColor: subColor,
-                          onClear: _confirmClearMemo,
-                        ),
-                        if (_isAnalyzing || _isReadingPhoto)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 10),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: const LinearProgressIndicator(
-                                key: Key('busy-indicator'),
-                                minHeight: 3,
-                                color: AppColors.gradStart,
-                              ),
-                            ),
-                          ),
-                        // 적용해 둔 자동 정리 결과(메모를 고치면 사라진다)
-                        ValueListenableBuilder<TextEditingValue>(
-                          valueListenable: _controller,
-                          builder: (_, value, _) {
-                            final a = _analysis;
-                            if (a == null ||
-                                _analyzedMemo != value.text.trim()) {
-                              return const SizedBox.shrink();
-                            }
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 10),
-                              child: AppliedAnalysisChips(
-                                category: a.category,
-                                priorityLabel: priorityLabel(a.priority),
-                                isAi: a.source == AnalysisSource.ai,
-                                isDark: isDark,
+                        child: IntrinsicHeight(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              HeroText(
+                                textColor: textColor,
                                 subColor: subColor,
-                                onRemove: () => setState(_clearAnalysis),
                               ),
-                            );
-                          },
+                              const SizedBox(height: 24),
+                              AnimatedSize(
+                                duration: const Duration(milliseconds: 250),
+                                curve: Curves.easeInOut,
+                                child: _hasActiveNotification
+                                    ? Column(
+                                        children: [
+                                          ActiveBanner(
+                                            isDark: isDark,
+                                            count: _pinnedIds.length,
+                                          ),
+                                          const SizedBox(height: 10),
+                                        ],
+                                      )
+                                    : const SizedBox.shrink(),
+                              ),
+                              InputCard(
+                                key: const Key('input-card'),
+                                controller: _controller,
+                                focusNode: _inputFocus,
+                                onAnalyze: _analyze,
+                                isAnalyzing: _isAnalyzing,
+                                showAiHint: _aiHint,
+                                onSchedule: _scheduleNotification,
+                                isDark: isDark,
+                                textColor: textColor,
+                                subColor: subColor,
+                                onClear: _confirmClearMemo,
+                              ),
+                              if (_isAnalyzing || _isReadingPhoto)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 10),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: const LinearProgressIndicator(
+                                      key: Key('busy-indicator'),
+                                      minHeight: 3,
+                                      color: AppColors.gradStart,
+                                    ),
+                                  ),
+                                ),
+                              // 적용해 둔 자동 정리 결과(메모를 고치면 사라진다)
+                              ValueListenableBuilder<TextEditingValue>(
+                                valueListenable: _controller,
+                                builder: (_, value, _) {
+                                  final a = _analysis;
+                                  if (a == null ||
+                                      _analyzedMemo != value.text.trim()) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 10),
+                                    child: AppliedAnalysisChips(
+                                      category: a.category,
+                                      priorityLabel: priorityLabel(a.priority),
+                                      isAi: a.source == AnalysisSource.ai,
+                                      isDark: isDark,
+                                      subColor: subColor,
+                                      onRemove: () => setState(_clearAnalysis),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 14),
+                              PinButton(
+                                key: const Key('pin-button'),
+                                isPinning: _isPinning,
+                                onTap: _createNotification,
+                              ),
+                              const SizedBox(height: 10),
+                              CancelButton(
+                                isDark: isDark,
+                                isActive: _hasActiveNotification,
+                                label: _pinnedIds.length > 1
+                                    ? '모두 지우기'
+                                    : '알림 지우기',
+                                onTap: _cancelNotification,
+                              ),
+                              // 입력창·버튼 아래 남는 자리의 가운데. 키보드가 올라오면 숨긴다
+                              Expanded(
+                                child:
+                                    MediaQuery.viewInsetsOf(context).bottom == 0
+                                    ? Center(child: HomeFooter(isDark: isDark))
+                                    : const SizedBox.shrink(),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 14),
-                        PinButton(
-                          key: const Key('pin-button'),
-                          isPinning: _isPinning,
-                          onTap: _createNotification,
-                        ),
-                        const SizedBox(height: 10),
-                        CancelButton(
-                          isDark: isDark,
-                          isActive: _hasActiveNotification,
-                          label: _pinnedIds.length > 1 ? '모두 지우기' : '알림 지우기',
-                          onTap: _cancelNotification,
-                        ),
-                        const SizedBox(height: 20),
-                      ],
+                      ),
                     ),
                   ),
                 ),

@@ -33,3 +33,9 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+
+  # 홈 화면 아래 문구에 쓰는 손글씨체(Caveat, SIL Open Font License)
+  fonts:
+    - family: Caveat
+      fonts:
+        - asset: assets/fonts/Caveat.ttf

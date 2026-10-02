@@ -175,6 +175,39 @@ class ActiveBanner extends StatelessWidget {
   }
 }
 
+// 화면 맨 아래 빈 자리에 놓는 문구. 문구·글꼴·색은 아래 값만 고치면 된다.
+class HomeFooter extends StatelessWidget {
+  /// 보여줄 문구(임시). 정해지면 여기만 바꾼다.
+  static const text = "\" Don't forget \"";
+
+
+  final bool isDark;
+  const HomeFooter({super.key, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    // 글자 색: 라이트는 옅은 회색, 다크는 어두운 회색이라 본문보다 한 단계 뒤로 물러나 보인다
+    final color = isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Center(
+        child: Text(
+          text,
+          key: const Key('home-footer'),
+          textAlign: TextAlign.center,
+          // Caveat는 글자가 작게 보이는 서체라 크기를 키워 둔다
+          style: TextStyle(
+            fontFamily: 'Caveat',
+            fontSize: 30,
+            fontVariations: const [FontVariation('wght', 600)],
+            color: color,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // 화면 위쪽의 큰 제목과 설명 문구
 class HeroText extends StatelessWidget {
   final Color textColor;
