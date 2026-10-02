@@ -34,6 +34,29 @@
             android:exported="false"
             android:stopWithTask="false"
             android:foregroundServiceType="mediaPlayback"/>
+        <activity
+            android:name=".QuickInputActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/QuickInputTheme"
+            android:windowSoftInputMode="stateVisible|adjustResize"/>
+        <receiver
+            android:name=".NotiMemoWidget"
+            android:exported="true"
+            android:label="알림메모">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/notimemo_widget_info"/>
+        </receiver>
+        <service
+            android:name=".NotiMemoWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS"/>
         <receiver android:name=".AlarmReceiver" android:exported="false"/>
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>

@@ -54,8 +54,13 @@
 ### 집 세션 기록 (2026-10-02 밤) — 사용 방법(코치마크)·권한 안내
 - **튜토리얼을 코치마크 방식 "사용 방법"으로 교체**: 5장 슬라이드(`tutorial_screen.dart`)를 지우고 실제 홈 화면 위에 어두운 막 + 구멍 + 말풍선으로 6단계를 안내한다(`widgets/coach_mark.dart`: `CoachStep`, `showCoachMarks`, `findRectByKey`). 단계·문구는 `home_screen.dart`의 `_startTutorial`. 대상은 `Key`로 찾는다(`input-card`, `pin-button`, `card-analyze`, `card-schedule`, `menu-drawer`). ✨·🕒는 글이 있어야 보이므로 샘플 글을 잠시 넣고 끝나면 원래 글로 복원. 위치를 0.1초마다 다시 재서 입장 애니메이션을 따라간다. `이전` 버튼, `건너뛰기`는 말풍선 왼쪽 아래(5단계 메뉴만 카드 바로 위, 마지막 단계는 숨김). 메뉴 이름은 `사용 방법`. `tutorial_seen` 규칙은 그대로.
 - **알림 권한 요청은 사용 방법이 끝난 뒤**에 한다(`initState` 체인). 권한이 꺼져 있으면 `설정` 버튼 달린 토스트가 계속 남고(`_checkNotificationPermission`, 앱을 열 때·재개 때), 누르면 요청 창을 다시 띄운다(막혀 있으면 앱 설정, `NotificationService.requestOrOpenSettings`). 고정·예약의 권한 오류 토스트에도 같은 버튼. 다른 토스트가 덮으면 다음 재확인 때 다시 뜬다.
-- 자동 테스트 393개, `flutter analyze` 무결점.
-- **다음 순서(사용자 결정)**: 위젯 개발(Phase 4, 먼저 설계 상의) → 마지막에 3.0.0 정식 릴리스 준비.
+- **홈 화면 위젯(Phase 4, 하나의 위젯, 실기기 확인 완료)**: 위쪽 입력줄 + `예약`/`내역` 탭 + 목록. 새 패키지 없이 네이티브 Kotlin(`NotiMemoWidget.kt`: 위젯·목록 서비스, `QuickInputActivity.kt`: 입력 팝업, `WidgetRows.kt`: JSON → 표시 줄 순수 함수)과 `res/layout/widget_*.xml`, `res/xml/notimemo_widget_info.xml`. 데이터는 앱과 공유하는 prefs(`flutter.scheduled_notes`, `flutter.memo_list`)를 읽는다.
+  - 입력줄을 누르면 작은 입력 창이 뜨고 `알림 고정하기`로 앱을 열지 않고 바로 고정(서비스 시작 + 내역 맨 앞에 추가 + 진동 설정 따름). 알림 권한이 없으면 앱을 연다. 예약은 위젯에서 하지 않는다.
+  - 목록 항목을 누르면 앱이 열리고 해당 탭의 시트(`scheduled`/`history`)가 바로 열린다(`MainActivity`의 `open` extra → `getLaunchTarget`/`openTarget` → `_openTarget`).
+  - 기본 4×2, 가로 4~5칸(5×2까지), 세로 자유. 갱신: 예약·내역·알림 수정 때 `NotiMemoWidget.refresh`(Flutter 쪽은 `MemoStorage.saveList` → `refreshWidget` 채널), 30분 주기.
+  - 실험으로 4×1(입력줄+버튼만) 압축 모드를 만들었다가 사용자 결정으로 롤백했다.
+- 자동 테스트 393개, `flutter analyze` 무결점(위젯은 자동 테스트 없음, 실기기로 확인).
+- **다음 순서(사용자 결정)**: 3.0.0 정식 릴리스 준비(마지막 단계): `AiClassifier.dailyLimit`→`releaseDailyLimit`(20) 복구, 버전 3.0.0, 설정 화면 `업데이트` 날짜, 미사용 의존성 정리, README·릴리스 노트(v2.6.0 사용자는 삭제 후 재설치).
 
 ### 사무실 세션 기록 (2026-10-02 저녁) — 사진 가져오기·진동·복구 (모두 `master`, 자동 테스트 390개)
 - **입력창 버튼**: ✕와 ✨·🕒 사이 28px(✨↔🕒 8px)로 간격만 띄워 분리, ✨·🕒는 오른쪽 바깥에서 옆으로 미끄러져 들어온다. 입력창은 글이 길어지면 부드럽게 늘어난다(`_inputGrowDuration`).

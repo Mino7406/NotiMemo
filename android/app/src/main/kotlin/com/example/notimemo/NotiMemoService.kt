@@ -282,7 +282,10 @@ class NotiMemoService : Service() {
                     }
                 }
             }
-            if (changed) prefs.edit().putString(PREF_HISTORY, arr.toString()).apply()
+            if (changed) {
+                prefs.edit().putString(PREF_HISTORY, arr.toString()).apply()
+                NotiMemoWidget.refresh(this)
+            }
         } catch (e: Exception) {
             // 히스토리가 깨져 있어도 알림 수정은 계속한다.
         }

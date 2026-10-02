@@ -15,6 +15,23 @@ class MainActivity : FlutterActivity() {
     private val channel = "com.example.notimemo/notification"
     private var methodChannel: MethodChannel? = null
 
+    /** 위젯에서 항목을 눌러 열렸을 때 앱이 열어야 할 화면(`history`/`scheduled`). Flutter가 가져가면 비운다. */
+    private var pendingTarget: String? = null
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        pendingTarget = intent?.getStringExtra("open")
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val target = intent.getStringExtra("open") ?: return
+        // 이미 실행 중이면 바로 알리고, 아니면 Flutter가 시작할 때 가져가도록 남겨 둔다.
+        pendingTarget = target
+        methodChannel?.invokeMethod("openTarget", target)
+    }
+
     private val dismissedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             methodChannel?.invokeMethod("notificationDismissed", null)
@@ -50,6 +67,14 @@ class MainActivity : FlutterActivity() {
                             action = NotiMemoService.ACTION_STOP_ALL
                         }
                     })
+                    result.success(null)
+                }
+                "getLaunchTarget" -> {
+                    result.success(pendingTarget)
+                    pendingTarget = null
+                }
+                "refreshWidget" -> {
+                    NotiMemoWidget.refresh(this)
                     result.success(null)
                 }
                 "vibrate" -> {

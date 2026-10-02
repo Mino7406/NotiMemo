@@ -52,6 +52,7 @@ object AlarmScheduler {
             editor.putString(PREF_SCHEDULED, arr.toString())
         }
         editor.apply()
+        NotiMemoWidget.refresh(ctx)
     }
 
     fun canScheduleExact(ctx: Context): Boolean =

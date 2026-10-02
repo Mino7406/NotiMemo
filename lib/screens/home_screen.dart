@@ -97,10 +97,17 @@ class _HomeScreenState extends State<HomeScreen>
     // 알림 권한 창이 사용 방법과 겹치지 않도록 사용 방법이 끝난 뒤에 요청한다.
     _load()
         .then((_) => _maybeShowTutorial())
+        .then((_) async {
+          final target = await NotificationService.launchTarget();
+          if (target != null && mounted) _openTarget(target);
+        })
         .then((_) => NotificationService.requestPermission())
         .then((_) => _checkNotificationPermission());
     NotificationService.restorePinned();
-    NotificationService.listenForChanges(_syncNotificationState);
+    NotificationService.listenForChanges(
+      _syncNotificationState,
+      onOpenTarget: _openTarget,
+    );
     _checkUpdate();
     WidgetsBinding.instance.addPostFrameCallback((_) => _animCtrl.forward());
   }
@@ -665,6 +672,16 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
     if (open == true) await NotificationService.requestExactAlarm();
+  }
+
+  /// 위젯에서 항목을 눌러 들어왔을 때 해당 목록(예약 목록/알림 내역)을 연다.
+  void _openTarget(String target) {
+    if (!mounted) return;
+    if (target == 'scheduled') {
+      _openScheduled();
+    } else if (target == 'history') {
+      _showHistory();
+    }
   }
 
   Future<void> _openScheduled() async {

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/memo_entry.dart';
 import '../models/scheduled_note.dart';
+import '../services/notification_service.dart';
 
 class MemoStorage {
   static const _keyList = 'memo_list';
@@ -23,7 +24,11 @@ class MemoStorage {
 
   static Future<void> saveList(List<MemoEntry> entries) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyList, jsonEncode(entries.map((e) => e.toJson()).toList()));
+    await prefs.setString(
+      _keyList,
+      jsonEncode(entries.map((e) => e.toJson()).toList()),
+    );
+    await NotificationService.refreshWidget();
   }
 
   static Future<String?> getCurrent() async {

@@ -18,6 +18,13 @@ class NotificationService {
     }
   }
 
+  /// 홈 화면 위젯의 목록을 다시 그리게 한다(예약·내역이 바뀐 뒤). 위젯이 없거나 네이티브가 없는 환경이면 무시한다.
+  static Future<void> refreshWidget() async {
+    try {
+      await _channel.invokeMethod('refreshWidget');
+    } catch (_) {}
+  }
+
   /// 고정 목록엔 있는데 알림창엔 알림이 하나도 없으면(앱 재설치·강제 종료로 서비스가 죽은 뒤)
   /// 저장된 목록대로 알림을 다시 게시한다. 화면의 "고정됨" 표시와 실제 알림을 맞추기 위함.
   static Future<void> restorePinned() async {
@@ -29,10 +36,26 @@ class NotificationService {
   }
 
   /// 알림이 지워지거나 고쳐지거나 예약이 고정되는 등 고정 상태가 바뀌면 [onChanged]가 불린다.
-  static void listenForChanges(void Function() onChanged) {
+  /// [onOpenTarget]은 위젯에서 항목을 눌러 앱이 (이미 켜진 채로) 열렸을 때 `history`/`scheduled`와 함께 불린다.
+  static void listenForChanges(
+    void Function() onChanged, {
+    void Function(String target)? onOpenTarget,
+  }) {
     _channel.setMethodCallHandler((call) async {
       if (call.method == 'notificationDismissed') onChanged();
+      if (call.method == 'openTarget' && call.arguments is String) {
+        onOpenTarget?.call(call.arguments as String);
+      }
     });
+  }
+
+  /// 위젯에서 눌러 앱이 새로 켜졌을 때 열어야 할 화면(`history`/`scheduled`). 없으면 null. 한 번 가져가면 비워진다.
+  static Future<String?> launchTarget() async {
+    try {
+      return await _channel.invokeMethod<String>('getLaunchTarget');
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<void> schedule(MemoEntry entry, DateTime at) async {
