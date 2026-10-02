@@ -26,9 +26,9 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "icon.png"
+  image_path: "assets/icon.png"
   adaptive_icon_background: "#000000"
-  adaptive_icon_foreground: "icon.png"
+  adaptive_icon_foreground: "assets/icon.png"
   min_sdk_android: 21
 
 flutter:
@@ -38,4 +38,4 @@ flutter:
   fonts:
     - family: Caveat
       fonts:
-        - asset: assets/fonts/Caveat.ttf
+        - asset: assets/Caveat.ttf

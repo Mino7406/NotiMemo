@@ -1,54 +1,41 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
-
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
+# 빌드 결과물
 /build/
-/coverage/
-
-# Symbolication related
+*.apk
+*.aab
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
-
-# Android Studio will place build artifacts here
 /android/app/debug
 /android/app/profile
 /android/app/release
 
-# Cloudflare Worker
+# Flutter / Dart 도구가 만드는 파일
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/coverage/
+**/doc/api/
+
+# 서명 키(저장소에 올리지 않는다): 키스토어와 key.properties는 어느 폴더에 두어도 제외
+key.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+
+# AI 서버(Cloudflare Worker): 패키지와 비밀 설정
 worker/node_modules/
 worker/.wrangler/
 worker/.dev.vars
 
-# 임시 산출물(APK 풀어낸 폴더, 빌드 로그)
+# 편집기·OS 개인 파일
+.vscode/
+.idea/
+*.iml
+*.swp
+.DS_Store
+
+# 임시 파일(APK를 풀어낸 폴더, 로그)
 apk_extract/
+*.log
 build_log.txt

@@ -49,6 +49,14 @@ class _HomeScreenState extends State<HomeScreen>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   final _controller = TextEditingController();
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  /// 아래 문구가 놓일 빈 자리를 재기 위한 키와, 키보드가 닫혀 있을 때 마지막으로 잰 위치.
+  /// 키보드가 올라와 화면이 줄어도 이 위치를 그대로 쓰므로 문구가 따라 올라가지 않는다.
+  final _footerKey = GlobalKey();
+  Rect? _footerRect;
+
+  /// 오른쪽 메뉴가 열려 있는지(열려 있으면 문구를 가린다)
+  bool _menuOpen = false;
   // 알림 내역(저장된 메모 전체)
   List<MemoEntry> _memoList = [];
   // 고정/인식/분석이 진행 중일 때 버튼 중복 클릭을 막으려는 표시
@@ -786,159 +794,196 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  /// 키보드가 닫혀 있을 때만 빈 자리의 화면상 위치를 다시 잰다.
+  void _measureFooter() {
+    if (!mounted || View.of(context).viewInsets.bottom > 0) return;
+    final ro = _footerKey.currentContext?.findRenderObject();
+    if (ro is! RenderBox || !ro.attached || !ro.hasSize) return;
+    final rect = ro.localToGlobal(Offset.zero) & ro.size;
+    final old = _footerRect;
+    if (old == null ||
+        (old.top - rect.top).abs() > 0.5 ||
+        (old.height - rect.height).abs() > 0.5) {
+      setState(() => _footerRect = rect);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : const Color(0xFF111827);
     final subColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
 
-    return Scaffold(
-      key: _scaffoldKey,
-      endDrawer: AppMenuDrawer(
-        scheduledCount: _scheduled.length,
-        historyCount: _memoList.length,
-        isBusy: _isAnalyzing || _isReadingPhoto,
-        onAnalyze: _analyze,
-        onPhoto: _readPhoto,
-        onSchedule: _scheduleNotification,
-        onScheduledList: _openScheduled,
-        onHistory: _showHistory,
-        onSettings: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => SettingsScreen(
-                currentMode: widget.currentMode,
-                onThemeChanged: widget.onThemeChanged,
-              ),
-            ),
-          );
-          await _refreshClassify();
-        },
-        onTutorial: _startTutorial,
-      ),
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnim,
-          child: SlideTransition(
-            position: _slideAnim,
-            child: Column(
-              children: [
-                TopBar(subColor: subColor, textColor: textColor),
-                Expanded(
-                  // 내용이 화면보다 짧으면 남는 아래쪽 빈 자리를 문구 영역으로 쓴다
-                  child: LayoutBuilder(
-                    builder: (context, box) => SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: box.maxHeight - 4,
-                        ),
-                        child: IntrinsicHeight(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              HeroText(
-                                textColor: textColor,
-                                subColor: subColor,
-                              ),
-                              const SizedBox(height: 24),
-                              AnimatedSize(
-                                duration: const Duration(milliseconds: 250),
-                                curve: Curves.easeInOut,
-                                child: _hasActiveNotification
-                                    ? Column(
-                                        children: [
-                                          ActiveBanner(
-                                            isDark: isDark,
-                                            count: _pinnedIds.length,
-                                          ),
-                                          const SizedBox(height: 10),
-                                        ],
-                                      )
-                                    : const SizedBox.shrink(),
-                              ),
-                              InputCard(
-                                key: const Key('input-card'),
-                                controller: _controller,
-                                focusNode: _inputFocus,
-                                onAnalyze: _analyze,
-                                isAnalyzing: _isAnalyzing,
-                                showAiHint: _aiHint,
-                                onSchedule: _scheduleNotification,
-                                isDark: isDark,
-                                textColor: textColor,
-                                subColor: subColor,
-                                onClear: _confirmClearMemo,
-                              ),
-                              if (_isAnalyzing || _isReadingPhoto)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 10),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(4),
-                                    child: const LinearProgressIndicator(
-                                      key: Key('busy-indicator'),
-                                      minHeight: 3,
-                                      color: AppColors.gradStart,
-                                    ),
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureFooter());
+    final footerRect = _footerRect;
+
+    // 문구는 Scaffold 밖(Stack)에 그려서, 키보드로 본문이 줄어들어도 위치가 변하지 않게 한다
+    return Stack(
+      children: [
+        Scaffold(
+          key: _scaffoldKey,
+          onEndDrawerChanged: (open) => setState(() => _menuOpen = open),
+          endDrawer: AppMenuDrawer(
+            scheduledCount: _scheduled.length,
+            historyCount: _memoList.length,
+            isBusy: _isAnalyzing || _isReadingPhoto,
+            onAnalyze: _analyze,
+            onPhoto: _readPhoto,
+            onSchedule: _scheduleNotification,
+            onScheduledList: _openScheduled,
+            onHistory: _showHistory,
+            onSettings: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SettingsScreen(
+                    currentMode: widget.currentMode,
+                    onThemeChanged: widget.onThemeChanged,
+                  ),
+                ),
+              );
+              await _refreshClassify();
+            },
+            onTutorial: _startTutorial,
+          ),
+          body: SafeArea(
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: SlideTransition(
+                position: _slideAnim,
+                child: Column(
+                  children: [
+                    TopBar(subColor: subColor, textColor: textColor),
+                    Expanded(
+                      // 내용이 화면보다 짧으면 남는 아래쪽 빈 자리를 문구 영역으로 쓴다
+                      child: LayoutBuilder(
+                        builder: (context, box) => SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: box.maxHeight - 4,
+                            ),
+                            child: IntrinsicHeight(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  HeroText(
+                                    textColor: textColor,
+                                    subColor: subColor,
                                   ),
-                                ),
-                              // 적용해 둔 자동 정리 결과(메모를 고치면 사라진다)
-                              ValueListenableBuilder<TextEditingValue>(
-                                valueListenable: _controller,
-                                builder: (_, value, _) {
-                                  final a = _analysis;
-                                  if (a == null ||
-                                      _analyzedMemo != value.text.trim()) {
-                                    return const SizedBox.shrink();
-                                  }
-                                  return Padding(
-                                    padding: const EdgeInsets.only(top: 10),
-                                    child: AppliedAnalysisChips(
-                                      category: a.category,
-                                      priorityLabel: priorityLabel(a.priority),
-                                      isAi: a.source == AnalysisSource.ai,
-                                      isDark: isDark,
-                                      subColor: subColor,
-                                      onRemove: () => setState(_clearAnalysis),
+                                  const SizedBox(height: 24),
+                                  AnimatedSize(
+                                    duration: const Duration(milliseconds: 250),
+                                    curve: Curves.easeInOut,
+                                    child: _hasActiveNotification
+                                        ? Column(
+                                            children: [
+                                              ActiveBanner(
+                                                isDark: isDark,
+                                                count: _pinnedIds.length,
+                                              ),
+                                              const SizedBox(height: 10),
+                                            ],
+                                          )
+                                        : const SizedBox.shrink(),
+                                  ),
+                                  InputCard(
+                                    key: const Key('input-card'),
+                                    controller: _controller,
+                                    focusNode: _inputFocus,
+                                    onAnalyze: _analyze,
+                                    isAnalyzing: _isAnalyzing,
+                                    showAiHint: _aiHint,
+                                    onSchedule: _scheduleNotification,
+                                    isDark: isDark,
+                                    textColor: textColor,
+                                    subColor: subColor,
+                                    onClear: _confirmClearMemo,
+                                  ),
+                                  if (_isAnalyzing || _isReadingPhoto)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 10),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(4),
+                                        child: const LinearProgressIndicator(
+                                          key: Key('busy-indicator'),
+                                          minHeight: 3,
+                                          color: AppColors.gradStart,
+                                        ),
+                                      ),
                                     ),
-                                  );
-                                },
+                                  // 적용해 둔 자동 정리 결과(메모를 고치면 사라진다)
+                                  ValueListenableBuilder<TextEditingValue>(
+                                    valueListenable: _controller,
+                                    builder: (_, value, _) {
+                                      final a = _analysis;
+                                      if (a == null ||
+                                          _analyzedMemo != value.text.trim()) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 10),
+                                        child: AppliedAnalysisChips(
+                                          category: a.category,
+                                          priorityLabel: priorityLabel(
+                                            a.priority,
+                                          ),
+                                          isAi: a.source == AnalysisSource.ai,
+                                          isDark: isDark,
+                                          subColor: subColor,
+                                          onRemove: () =>
+                                              setState(_clearAnalysis),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 14),
+                                  PinButton(
+                                    key: const Key('pin-button'),
+                                    isPinning: _isPinning,
+                                    onTap: _createNotification,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  CancelButton(
+                                    isDark: isDark,
+                                    isActive: _hasActiveNotification,
+                                    label: _pinnedIds.length > 1
+                                        ? '모두 지우기'
+                                        : '알림 지우기',
+                                    onTap: _cancelNotification,
+                                  ),
+                                  // 입력창·버튼 아래 남는 빈 자리. 문구는 여기가 아니라 아래 Stack에서 이 자리의
+                                  // 위치를 따라 그린다(키보드가 올라와도 제자리에 있도록)
+                                  Expanded(
+                                    child: SizedBox.expand(key: _footerKey),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 14),
-                              PinButton(
-                                key: const Key('pin-button'),
-                                isPinning: _isPinning,
-                                onTap: _createNotification,
-                              ),
-                              const SizedBox(height: 10),
-                              CancelButton(
-                                isDark: isDark,
-                                isActive: _hasActiveNotification,
-                                label: _pinnedIds.length > 1
-                                    ? '모두 지우기'
-                                    : '알림 지우기',
-                                onTap: _cancelNotification,
-                              ),
-                              // 입력창·버튼 아래 남는 자리의 가운데. 키보드가 올라오면 숨긴다
-                              Expanded(
-                                child:
-                                    MediaQuery.viewInsetsOf(context).bottom == 0
-                                    ? Center(child: HomeFooter(isDark: isDark))
-                                    : const SizedBox.shrink(),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
-      ),
+        if (footerRect != null && !_menuOpen)
+          Positioned(
+            left: 0,
+            right: 0,
+            top: footerRect.top,
+            height: footerRect.height,
+            child: IgnorePointer(
+              child: Material(
+                type: MaterialType.transparency,
+                child: Center(child: HomeFooter(isDark: isDark)),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
