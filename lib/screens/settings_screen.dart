@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/notification_service.dart';
 import '../services/update_service.dart';
 import '../storage/ai_storage.dart';
+import '../storage/settings_storage.dart';
 import '../theme/app_theme.dart';
 import '../utils/reminder_time.dart';
 import '../widgets/app_dialogs.dart';
@@ -29,6 +31,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _aiOn = false;
   bool _autoClassify = true;
   int _leadMinutes = defaultLeadMinutes;
+  bool _vibration = true;
 
   @override
   void initState() {
@@ -42,13 +45,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final consent = await AiStorage.getConsent();
     final lead = await AiStorage.getLeadMinutes();
     final classify = await AiStorage.getAutoClassify();
+    final vibration = await SettingsStorage.getVibration();
     if (mounted) {
       setState(() {
+        _vibration = vibration;
         _aiOn = consent == true;
         _leadMinutes = lead;
         _autoClassify = classify;
       });
     }
+  }
+
+  Future<void> _setVibration(bool on) async {
+    await SettingsStorage.setVibration(on);
+    if (mounted) setState(() => _vibration = on);
+    if (on) NotificationService.vibrate(); // 켜자마자 느낌을 보여 준다
   }
 
   Future<void> _setAutoClassify(bool on) async {
@@ -139,6 +150,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _ThemePicker(
                       currentMode: _currentMode,
                       onChanged: _changeTheme,
+                      isDark: isDark,
+                      textColor: textColor,
+                      subColor: subColor,
+                    ),
+                    const SizedBox(height: 24),
+                    _SectionLabel(label: '진동', subColor: subColor),
+                    const SizedBox(height: 10),
+                    _AiSwitchCard(
+                      switchKey: const Key('vibration-switch'),
+                      title: '알림 진동',
+                      onText: '알림을 고정하거나 예약을 마치거나 다시 게시할 때 진동해요.',
+                      offText: '꺼져 있어요. 진동하지 않아요.',
+                      value: _vibration,
+                      onChanged: _setVibration,
                       isDark: isDark,
                       textColor: textColor,
                       subColor: subColor,
@@ -272,22 +297,6 @@ class _AppInfoCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Column(
           children: [
-            _InfoRow(
-              label: '앱 이름',
-              textColor: textColor,
-              subColor: subColor,
-              trailing: Text(
-                '알림메모',
-                style: TextStyle(fontSize: 14, color: textColor),
-              ),
-            ),
-            Divider(
-              height: 1,
-              thickness: 1,
-              indent: 16,
-              endIndent: 16,
-              color: dividerColor,
-            ),
             _InfoRow(
               label: '버전',
               textColor: textColor,

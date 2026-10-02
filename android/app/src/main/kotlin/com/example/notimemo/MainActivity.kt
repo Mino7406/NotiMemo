@@ -52,6 +52,14 @@ class MainActivity : FlutterActivity() {
                     })
                     result.success(null)
                 }
+                "vibrate" -> {
+                    vibrateShort()
+                    result.success(null)
+                }
+                "restorePinned" -> {
+                    restorePinnedIfMissing()
+                    result.success(null)
+                }
                 "schedule" -> {
                     val id = call.argument<String>("id")
                     val memo = call.argument<String>("memo")
@@ -79,6 +87,31 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun vibrateShort() {
+        val v = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            getSystemService(android.os.VibratorManager::class.java).defaultVibrator
+        } else {
+            getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            v.vibrate(android.os.VibrationEffect.createOneShot(60, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            v.vibrate(60)
+        }
+    }
+
+    /** 고정 목록(prefs)은 있는데 우리 알림이 하나도 안 떠 있으면 서비스를 깨워 다시 게시한다. */
+    private fun restorePinnedIfMissing() {
+        val raw = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            .getString("flutter.pinned_notes", null)
+        if (raw.isNullOrEmpty() || raw == "[]") return
+        val nm = getSystemService(android.app.NotificationManager::class.java)
+        if (nm.activeNotifications.any { it.packageName == packageName && it.id != 0 }) return
+        val intent = Intent(this, NotiMemoService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
     }
 
     override fun onStart() {

@@ -1,11 +1,32 @@
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/memo_entry.dart';
+import '../storage/settings_storage.dart';
 
 class NotificationService {
   static const _channel = MethodChannel('com.example.notimemo/notification');
 
   static Future<void> initialize() async {}
+
+  /// 설정에서 진동이 켜져 있으면 짧게 진동한다(알림 생성·예약 완료·재게시 때).
+  static Future<void> vibrate() async {
+    try {
+      if (!await SettingsStorage.getVibration()) return;
+      await _channel.invokeMethod('vibrate');
+    } catch (_) {
+      // 진동이 안 돼도 동작에는 영향이 없다.
+    }
+  }
+
+  /// 고정 목록엔 있는데 알림창엔 알림이 하나도 없으면(앱 재설치·강제 종료로 서비스가 죽은 뒤)
+  /// 저장된 목록대로 알림을 다시 게시한다. 화면의 "고정됨" 표시와 실제 알림을 맞추기 위함.
+  static Future<void> restorePinned() async {
+    try {
+      await _channel.invokeMethod('restorePinned');
+    } catch (_) {
+      // 복구 실패가 앱 사용을 막지 않게 한다(테스트처럼 네이티브가 없는 환경 포함).
+    }
+  }
 
   /// 알림이 지워지거나 고쳐지거나 예약이 고정되는 등 고정 상태가 바뀌면 [onChanged]가 불린다.
   static void listenForChanges(void Function() onChanged) {
