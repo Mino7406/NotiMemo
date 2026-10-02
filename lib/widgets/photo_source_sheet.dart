@@ -11,6 +11,7 @@ Future<PhotoSource?> showPhotoSourceSheet(BuildContext context) {
   );
 }
 
+// 카메라/갤러리 중 하나를 고르는 시트 모양
 class _PhotoSourceSheet extends StatelessWidget {
   const _PhotoSourceSheet();
 
@@ -78,6 +79,7 @@ class _PhotoSourceSheet extends StatelessWidget {
   }
 }
 
+// 시트 안의 한 줄짜리 선택 버튼
 class _SourceTile extends StatelessWidget {
   final IconData icon;
   final String label;

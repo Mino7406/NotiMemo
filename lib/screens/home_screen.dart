@@ -29,6 +29,7 @@ import '../widgets/photo_source_sheet.dart';
 import '../widgets/scheduled_sheet.dart';
 import '../widgets/schedule_sheet.dart';
 
+// 메인 화면: 메모 입력, 알림 고정, 예약, AI 정리 등 대부분의 기능이 여기서 시작된다
 class HomeScreen extends StatefulWidget {
   final ThemeMode currentMode;
   final void Function(ThemeMode) onThemeChanged;
@@ -43,11 +44,14 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+// 화면 상태. 입력창 글, 저장된 내역·고정·예약 목록, 진행 중인 작업 표시 등을 들고 있다
 class _HomeScreenState extends State<HomeScreen>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   final _controller = TextEditingController();
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+  // 알림 내역(저장된 메모 전체)
   List<MemoEntry> _memoList = [];
+  // 고정/인식/분석이 진행 중일 때 버튼 중복 클릭을 막으려는 표시
   bool _isPinning = false;
   bool _isReadingPhoto = false;
   bool _isAnalyzing = false;
@@ -68,7 +72,9 @@ class _HomeScreenState extends State<HomeScreen>
   final _inputFocus = FocusNode();
   MemoAnalysis? _analysis;
   String? _analyzedMemo;
+  // 지금 알림창에 떠 있는 메모의 id
   Set<String> _pinnedIds = {};
+  // 예약해 둔 메모 목록
   List<ScheduledNote> _scheduled = [];
 
   /// 예약 목록에서 입력창으로 불러온 메모의 id. 다시 고정/예약하면 같은 메모가 갱신된다.
@@ -76,6 +82,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   bool get _hasActiveNotification => _pinnedIds.isNotEmpty;
 
+  // 화면이 처음 열릴 때 아래에서 올라오며 나타나는 애니메이션
   late final AnimationController _animCtrl = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 900),
@@ -132,11 +139,13 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  // 앱을 켤 때 새 버전이 있는지 확인하고 있으면 안내 창을 띄운다
   Future<void> _checkUpdate() async {
     final newVersion = await UpdateService.checkForUpdate();
     if (newVersion != null && mounted) showUpdateDialog(context, newVersion);
   }
 
+  // 알림이 바뀌었을 때(지움, 수정, 예약 발동 등) 저장된 값을 다시 읽어서 화면에 맞춘다
   Future<void> _syncNotificationState() async {
     final ids = await MemoStorage.getPinnedIds();
     final scheduled = await MemoStorage.getScheduled();
@@ -230,6 +239,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (mounted) setState(() => _memoList = list);
   }
 
+  // 앱을 켤 때 임시 저장된 글과 내역·고정·예약 목록을 불러온다
   Future<void> _load() async {
     final current = await MemoStorage.getCurrent();
     _classify = await AiStorage.classificationEnabled();
@@ -246,6 +256,7 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
+  // 예약 목록에서 고른 메모를 입력창으로 가져와 다시 고칠 수 있게 한다
   void _loadForEdit(String id, String memo) {
     _controller.text = memo;
     _controller.selection = TextSelection.collapsed(offset: memo.length);
@@ -286,6 +297,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  // AI 정리 결과를 비운다
   void _clearAnalysis() {
     _analysis = null;
     _analyzedMemo = null;
@@ -301,6 +313,7 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
+  // 안내 말풍선을 끈다
   void _hideAiHint() {
     _aiHintTimer?.cancel();
     _aiHint = false;
@@ -387,6 +400,7 @@ class _HomeScreenState extends State<HomeScreen>
     MemoStorage.setCurrent(text);
   }
 
+  // 요약으로 바꿨을 때 되돌리기 버튼이 있는 토스트를 띄운다
   void _toastSummaryApplied(String original, String summary, MemoAnalysis a) {
     final toast = showAppToast(
       context,
@@ -496,9 +510,11 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
+  // 토스트를 간단히 띄우는 줄임 함수
   void _toast(String msg, {bool isError = false}) =>
       showAppToast(context, msg, isError: isError);
 
+  // 사진에서 읽은 글을 입력창에 넣고 ✨ 안내를 보여준다
   void _fillFromPhoto(String text) {
     _setMemoText(text);
     _toast('사진으로부터 글자를 불러왔어요.');
@@ -540,6 +556,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  // 고정된 알림을 전부 내린다
   Future<void> _cancelNotification() async {
     if (!_hasActiveNotification) return;
     await NotificationService.cancel();
@@ -547,6 +564,7 @@ class _HomeScreenState extends State<HomeScreen>
     _toast('알림이 해제되었습니다.');
   }
 
+  // 입력한 메모를 알림창에 고정한다. 권한 확인 → 알림 게시 → 내역 저장 순서로 한다
   Future<void> _createNotification() async {
     final memo = _controller.text.trim();
     if (memo.isEmpty) {
@@ -584,6 +602,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  // 시각을 골라서 예약 고정한다. 시각이 지난 값이면 다시 고르게 한다
   Future<void> _scheduleNotification({DateTime? initial}) async {
     final memo = _controller.text.trim();
     if (memo.isEmpty) {
@@ -684,6 +703,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  // 예약 목록을 열고, 고른 항목이 있으면 예약을 취소하고 입력창으로 불러온다
   Future<void> _openScheduled() async {
     final picked = await showScheduledSheet(context);
     await _syncNotificationState();
@@ -694,6 +714,7 @@ class _HomeScreenState extends State<HomeScreen>
     _toast('예약을 취소하고 입력창으로 불러왔어요.');
   }
 
+  // 알림 내역 시트를 연다. 삭제·전체삭제·다시 고정은 시트에서 넘어온 콜백으로 처리한다
   void _showHistory() {
     showModalBottomSheet(
       context: context,
@@ -715,6 +736,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  // 내역에서 고른 메모를 다시 고정하거나 예약한다
   Future<void> _restoreMemo(MemoEntry entry) async {
     final choice = await showRestoreConfirmDialog(context, entry.memo);
     if (choice == null || !mounted) return;

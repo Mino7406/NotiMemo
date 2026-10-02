@@ -4,6 +4,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:image_picker/image_picker.dart';
 import '../utils/ocr_text.dart';
 
+// 사진을 가져오는 방법: 카메라로 찍기 / 갤러리에서 고르기
 enum PhotoSource { camera, gallery }
 
 /// 사진에서 글자를 읽는다. 온디바이스(ML Kit 한국어 모델)라 오프라인에서도 동작한다.
@@ -27,6 +28,7 @@ class OcrService {
     );
     if (picked == null) return null;
 
+    // 한국어 인식 모델로 사진 속 글자를 읽는다
     final recognizer = TextRecognizer(script: TextRecognitionScript.korean);
     try {
       final result = await recognizer.processImage(

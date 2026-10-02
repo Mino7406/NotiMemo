@@ -25,8 +25,10 @@ ReminderSuggestion suggestReminder(
   if (!due.hasTime || leadMinutes <= 0) {
     return ReminderSuggestion(due.at, due.at);
   }
+  // 일정 시각에서 여유 시간만큼 앞으로 당긴다
   var remind = due.at.subtract(Duration(minutes: leadMinutes));
   if (!remind.isAfter(now)) {
+    // 당긴 시각이 이미 지났으면 지금부터 5분 뒤로 잡는다
     final soon = now.add(const Duration(minutes: 5));
     remind = soon.isAfter(due.at) ? due.at : soon;
   }

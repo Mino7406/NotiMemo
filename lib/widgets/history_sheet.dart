@@ -9,6 +9,7 @@ import 'memo_list_row.dart';
 import '../utils/time_format.dart';
 import 'notice_button.dart';
 
+// 알림 내역 시트. 삭제/다시 고정 같은 실제 처리는 홈 화면에서 넘겨받은 함수로 한다
 class HistorySheet extends StatefulWidget {
   final List<MemoEntry> memoList;
   final Future<void> Function(int) onDelete;
@@ -28,9 +29,11 @@ class HistorySheet extends StatefulWidget {
 }
 
 class _HistorySheetState extends State<HistorySheet> {
+  // 화면에 보여줄 내역(삭제하면 여기서도 바로 뺀다)
   late List<MemoEntry> _list;
   ClassFilter _filter = ClassFilter.none;
 
+  // 필터에 쓰려고 분류·우선순위만 뽑는다
   ({String? category, MemoPriority priority}) _classOf(MemoEntry e) =>
       (category: e.category, priority: e.priority);
 
@@ -49,6 +52,7 @@ class _HistorySheetState extends State<HistorySheet> {
     final bottomPad = MediaQuery.of(context).padding.bottom;
     final classItems = [for (final e in _list) _classOf(e)];
     final filter = _filter.normalizedFor(classItems);
+    // 필터를 통과한 항목의 원래 위치 번호
     final shownIdx = visibleIndexes(_list, filter, _classOf);
 
     return Container(

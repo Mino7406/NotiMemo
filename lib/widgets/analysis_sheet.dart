@@ -28,6 +28,7 @@ Future<AnalysisDecision?> showAnalysisSheet(
   );
 }
 
+// ✨ 분석 결과를 보여주고 적용/예약 여부를 고르게 하는 시트
 class AnalysisSheet extends StatelessWidget {
   final MemoAnalysis analysis;
   final int leadMinutes;
@@ -44,6 +45,7 @@ class AnalysisSheet extends StatelessWidget {
     final subColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     final bottomPad = MediaQuery.of(context).padding.bottom;
     final due = analysis.due;
+    // 일정 시각이 있으면 여유 시간을 뺀 알림 시각을 제안한다
     final reminder = due == null
         ? null
         : suggestReminder(due, DateTime.now(), leadMinutes: leadMinutes);
@@ -206,6 +208,7 @@ class AnalysisSheet extends StatelessWidget {
   }
 }
 
+// 결과가 AI 분석인지 기본 분석인지 알려주는 작은 표시
 class _SourceBadge extends StatelessWidget {
   final bool isAi;
   final bool isDark;
@@ -240,6 +243,7 @@ class _SourceBadge extends StatelessWidget {
   }
 }
 
+// 결과 칸 위에 붙는 작은 이름표
 class _Label extends StatelessWidget {
   final String text;
   final Color color;
@@ -257,6 +261,7 @@ class _Label extends StatelessWidget {
   );
 }
 
+// 분류, 우선순위 같은 값을 보여주는 알약
 class _Chip extends StatelessWidget {
   final String label;
   final Color color;
@@ -291,6 +296,7 @@ class _Chip extends StatelessWidget {
   }
 }
 
+// 강조 버튼(그라데이션)
 class _PrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
@@ -321,6 +327,7 @@ class _PrimaryButton extends StatelessWidget {
   }
 }
 
+// 보조 버튼(윤곽선)
 class _OutlineButton extends StatelessWidget {
   final String label;
   final bool isDark;

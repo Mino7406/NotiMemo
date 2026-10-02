@@ -23,6 +23,7 @@ Future<ScheduledNote?> showScheduledSheet(BuildContext context) {
   );
 }
 
+// 예약 목록 시트의 본체
 class _ScheduledSheet extends StatefulWidget {
   const _ScheduledSheet();
 
@@ -31,12 +32,14 @@ class _ScheduledSheet extends StatefulWidget {
 }
 
 class _ScheduledSheetState extends State<_ScheduledSheet> {
+  // 예약 목록. 아직 불러오지 못했으면 null(로딩 중)
   List<ScheduledNote>? _items;
 
   /// 예약 메모와 같은 id의 히스토리 기록(카테고리·우선순위 표시용).
   Map<String, MemoEntry> _entries = {};
   ClassFilter _filter = ClassFilter.none;
 
+  // 예약 항목의 분류·우선순위를 같은 id의 내역 기록에서 찾는다. 없으면 보통으로 본다
   ({String? category, MemoPriority priority}) _classOf(ScheduledNote n) {
     final e = _entries[n.id];
     return (
@@ -51,6 +54,7 @@ class _ScheduledSheetState extends State<_ScheduledSheet> {
     _load();
   }
 
+  // 예약 목록과 내역을 읽어 온다
   Future<void> _load() async {
     final items = await MemoStorage.getScheduled();
     final entries = await MemoStorage.getList();
@@ -77,6 +81,7 @@ class _ScheduledSheetState extends State<_ScheduledSheet> {
     await _load();
   }
 
+  // 예약 하나를 취소하고 목록을 다시 불러온다
   Future<void> _cancel(ScheduledNote note) async {
     await NotificationService.cancelSchedule(note.id);
     await _load();

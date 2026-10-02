@@ -13,6 +13,7 @@ class AiHttpResponse {
   const AiHttpResponse(this.status, this.body);
 }
 
+// 실제 통신을 하는 함수의 모양. 테스트에서는 가짜 함수로 바꿔 끼운다
 typedef AiTransport =
     Future<AiHttpResponse> Function(
       Uri url,
@@ -21,26 +22,21 @@ typedef AiTransport =
     );
 
 /// 메모를 서버(Cloudflare Workers AI)로 분석하고, 못 쓰면 규칙 기반 분석으로 대신한다.
-///
-/// 어떤 실패든 예외를 던지지 않고 [MemoAnalysis]를 돌려준다. 서버로 보내는 건 동의한
-/// 사용자의 메모 본문과 설치별 무작위 id뿐이다.
+/// 어떤 실패든 예외를 던지지 않고 [MemoAnalysis]를 돌려준다. 서버로 보내는 건 동의한 사용자의 메모 본문과 설치별 무작위 id뿐이다.
 class AiClassifier {
+  // 분류 서버 주소(Cloudflare Workers)
   static final defaultEndpoint = Uri.parse(
     'https://notimemo-ai.notimemo-ai.workers.dev/classify',
   );
 
-  /// 기기당 하루 호출 상한. 서버의 하루 무료 사용량(약 600건)을 여러 기기가 나눠 쓰므로
-  /// 앱에서도 막는다.
-  ///
-  /// TODO(3.0.0): 최종 3.0.0 빌드 전까지 개발·시험 중이라 사실상 제한을 풀어 둔다.
-  /// 배포 빌드 전에 [releaseDailyLimit]로 되돌린다.
-  static int dailyLimit = devDailyLimit;
+  /// 기기당 하루 호출 상한. 서버의 하루 무료 사용량(약 600건)을 여러 기기가 나눠 쓰므로 앱에서도 막는다.
+  static int dailyLimit = releaseDailyLimit;
   static const releaseDailyLimit = 20;
-  static const devDailyLimit = 100000;
 
   /// 서버가 받는 최대 길이(worker MAX_MEMO_LENGTH). 분류에는 앞부분이면 충분하다.
   static const maxMemoLength = 500;
 
+  // 서버가 이 시간 안에 답하지 않으면 기본 분석으로 넘어간다
   static const timeout = Duration(seconds: 8);
 
   final Uri endpoint;
@@ -50,6 +46,7 @@ class AiClassifier {
     : endpoint = endpoint ?? defaultEndpoint,
       _transport = transport ?? _httpTransport;
 
+  // 메모를 분석한다. 동의 여부, 하루 횟수를 먼저 확인하고 서버를 부르며 어느 단계든 실패하면 규칙 기반 분석으로 대신한다
   Future<MemoAnalysis> analyze(String memo, {DateTime? now}) async {
     final clock = now ?? DateTime.now();
     MemoAnalysis fallback(FallbackReason reason) =>
@@ -94,6 +91,7 @@ class AiClassifier {
     }
   }
 
+  // 서버가 보낸 오류 코드를 사용자에게 보여줄 이유로 바꾼다
   FallbackReason _reasonForError(AiHttpResponse response) {
     if (response.status == 429) {
       try {
@@ -137,6 +135,7 @@ class AiClassifier {
     );
   }
 
+  // 실제로 서버에 JSON을 POST로 보내는 기본 통신 함수
   static Future<AiHttpResponse> _httpTransport(
     Uri url,
     String jsonBody,

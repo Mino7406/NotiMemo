@@ -10,6 +10,7 @@ class ScheduledNote {
 
   const ScheduledNote({required this.id, required this.memo, required this.at});
 
+  // 밀리초 값을 DateTime으로 바꿔서 쓰기 편하게 한 getter
   DateTime get time => DateTime.fromMillisecondsSinceEpoch(at);
 
   /// 깨진 값은 빈 목록, 결과는 시각이 빠른 순.

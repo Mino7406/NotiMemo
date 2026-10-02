@@ -31,6 +31,7 @@ class ClassFilterBar extends StatelessWidget {
       for (final p in MemoPriority.values.reversed) // 높음 → 보통 → 낮음
         if (items.any((e) => e.priority == p)) p,
     ];
+    // 칩 옆에 붙는 개수 계산
     int countCat(String c) => items.where((e) => e.category == c).length;
     int countPri(MemoPriority p) => items.where((e) => e.priority == p).length;
 
@@ -90,6 +91,7 @@ class ClassFilterBar extends StatelessWidget {
   }
 }
 
+// '분류', '우선순위' 같은 이름 뒤에 칩을 가로로 늘어놓는 한 줄
 class _Row extends StatelessWidget {
   final String label;
   final Color subColor;
@@ -131,6 +133,7 @@ class _Row extends StatelessWidget {
   }
 }
 
+// 누르면 선택/해제되는 알약 모양 칩
 class _FilterChip extends StatelessWidget {
   final String keyName;
   final String label;

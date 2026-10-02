@@ -58,6 +58,7 @@ object WidgetRows {
         }
     }
 
+    // 내역을 id로 바로 찾을 수 있게 맵으로 만든다
     private fun historyById(raw: String?): Map<String, JSONObject> {
         if (raw.isNullOrEmpty()) return emptyMap()
         return try {
@@ -74,6 +75,7 @@ object WidgetRows {
         }
     }
 
+    // "분류 · 우선순위 보통" 글자를 만든다. 분류가 없으면 빈 글자
     private fun labelOf(entry: JSONObject?): String {
         val category = entry?.optString("category").orEmpty()
         if (category.isEmpty()) return ""

@@ -1,6 +1,7 @@
 import '../models/memo_analysis.dart';
 import '../models/memo_entry.dart';
 
+// 우선순위 값을 화면에 보여줄 한글로 바꾼다
 String priorityLabel(MemoPriority p) => switch (p) {
   MemoPriority.low => '낮음',
   MemoPriority.normal => '보통',
@@ -23,6 +24,7 @@ String fallbackMessage(FallbackReason reason) => switch (reason) {
   FallbackReason.serverError => 'AI 서버에 문제가 있어 기본 분석으로 정리했어요.',
 };
 
+// 요일 이름(월요일이 0번)
 const _weekdayNames = ['월', '화', '수', '목', '금', '토', '일'];
 
 /// "10월 2일 (금) 오후 3시", 분이 있으면 "오후 3시 30분".

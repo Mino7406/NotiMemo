@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../storage/memo_storage.dart';
 import '../theme/app_theme.dart';
 
+// 화면 맨 위: 앱 로고와 이름, 오른쪽에 메뉴(☰) 버튼
 class TopBar extends StatelessWidget {
   final Color textColor;
   final Color subColor;
@@ -52,6 +53,7 @@ class TopBar extends StatelessWidget {
   }
 }
 
+// 누르는 동안 살짝 작아지는 아이콘 버튼
 class AnimatedIconButton extends StatefulWidget {
   final IconData icon;
   final Color color;
@@ -96,6 +98,7 @@ class _AnimatedIconButtonState extends State<AnimatedIconButton> {
     );
   }
 
+  // 테두리 없는 기본 모양
   Widget _plain() => Padding(
     padding: const EdgeInsets.all(12),
     child: Icon(widget.icon, color: widget.color, size: widget.size),
@@ -120,6 +123,7 @@ class _AnimatedIconButtonState extends State<AnimatedIconButton> {
   }
 }
 
+// 알림이 고정되어 있을 때 입력창 위에 보이는 안내 띠(고정된 개수 표시)
 class ActiveBanner extends StatelessWidget {
   final bool isDark;
   final int count;
@@ -171,6 +175,7 @@ class ActiveBanner extends StatelessWidget {
   }
 }
 
+// 화면 위쪽의 큰 제목과 설명 문구
 class HeroText extends StatelessWidget {
   final Color textColor;
   final Color subColor;
@@ -201,6 +206,7 @@ class HeroText extends StatelessWidget {
   }
 }
 
+// 메모를 쓰는 큰 입력 카드. 글이 있으면 오른쪽에 ✕, ✨, 🕒 버튼이 나타난다
 class InputCard extends StatefulWidget {
   final TextEditingController controller;
   final bool isDark;
@@ -240,7 +246,9 @@ class InputCard extends StatefulWidget {
 
 class _InputCardState extends State<InputCard>
     with SingleTickerProviderStateMixin {
+  // 밖에서 포커스 노드를 넘겨주면 그걸 쓰고, 아니면 카드가 직접 만든다
   late final _focusNode = widget.focusNode ?? FocusNode();
+  // 입력창에 커서가 있는지(테두리 색을 바꾸는 데 쓴다)
   bool _focused = false;
 
   /// 안내 말풍선·✨의 깜빡임/맥박 박자(0→1→0 반복).
@@ -264,6 +272,7 @@ class _InputCardState extends State<InputCard>
     if (old.showAiHint != widget.showAiHint) _syncPulse();
   }
 
+  // 안내 말풍선이 켜져 있는 동안만 깜빡임 애니메이션을 돌린다
   void _syncPulse() {
     if (widget.showAiHint) {
       _pulse.repeat(reverse: true);
@@ -470,13 +479,13 @@ class _InputCardState extends State<InputCard>
   }
 }
 
-/// 입력창 오른쪽 버튼의 크기와 카드 안쪽 여백.
 /// 새 메모 입력창의 최소 줄 수(글이 이보다 길어지면 그만큼 늘어난다).
 const int _inputMinLines = 6;
 
 /// 입력창이 글 길이에 맞춰 늘어나고 줄어드는 시간. 과하지 않게 짧게 둔다.
 const Duration _inputGrowDuration = Duration(milliseconds: 220);
 
+// 오른쪽 버튼의 크기와 카드 안쪽 여백
 const double _cardChipSize = 34;
 const double _cardChipInset = 12;
 
@@ -701,6 +710,7 @@ class AiHintBubble extends StatelessWidget {
   }
 }
 
+// [알림 고정하기] 큰 버튼. 고정하는 중이면 로딩 표시를 보여준다
 class PinButton extends StatefulWidget {
   final bool isPinning;
   final VoidCallback onTap;
@@ -781,105 +791,7 @@ class _PinButtonState extends State<PinButton> {
   }
 }
 
-class HistoryButton extends StatefulWidget {
-  final int count;
-  final bool isDark;
-  final Color subColor;
-  final VoidCallback onTap;
-  final String label;
-  final IconData icon;
-
-  const HistoryButton({
-    super.key,
-    this.label = '알림 내역',
-    this.icon = Icons.history_rounded,
-    required this.count,
-    required this.isDark,
-    required this.subColor,
-    required this.onTap,
-  });
-
-  @override
-  State<HistoryButton> createState() => _HistoryButtonState();
-}
-
-class _HistoryButtonState extends State<HistoryButton> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 100),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          width: double.infinity,
-          height: 52,
-          decoration: BoxDecoration(
-            color: _pressed
-                ? AppColors.gradStart.withAlpha(widget.isDark ? 30 : 20)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: _pressed
-                  ? AppColors.gradStart.withAlpha(widget.isDark ? 100 : 80)
-                  : (widget.isDark
-                        ? AppColors.borderDark
-                        : AppColors.borderLight),
-              width: 1.5,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(widget.icon, size: 20, color: widget.subColor),
-              const SizedBox(width: 8),
-              Text(
-                widget.label,
-                style: TextStyle(
-                  color: widget.subColor,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              if (widget.count > 0) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: widget.isDark
-                        ? AppColors.elevatedDark
-                        : const Color(0xFFEEF2FF),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${widget.count}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.gradStart,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
+// [알림 지우기] 버튼. 고정된 알림이 없으면 흐리게 보인다
 class CancelButton extends StatefulWidget {
   final bool isDark;
   final bool isActive;
@@ -951,64 +863,6 @@ class _CancelButtonState extends State<CancelButton> {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 고정 버튼 옆에 두는 정사각형 보조 버튼 (예약 등).
-class SquareIconButton extends StatefulWidget {
-  final IconData icon;
-  final bool isDark;
-  final VoidCallback onTap;
-  final String tooltip;
-  const SquareIconButton({
-    super.key,
-    required this.icon,
-    required this.isDark,
-    required this.onTap,
-    required this.tooltip,
-  });
-
-  @override
-  State<SquareIconButton> createState() => _SquareIconButtonState();
-}
-
-class _SquareIconButtonState extends State<SquareIconButton> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: widget.tooltip,
-      child: GestureDetector(
-        onTapDown: (_) => setState(() => _pressed = true),
-        onTapUp: (_) {
-          setState(() => _pressed = false);
-          widget.onTap();
-        },
-        onTapCancel: () => setState(() => _pressed = false),
-        child: AnimatedScale(
-          scale: _pressed ? 0.95 : 1.0,
-          duration: const Duration(milliseconds: 100),
-          child: Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: _pressed
-                  ? AppColors.gradStart.withAlpha(widget.isDark ? 30 : 20)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: widget.isDark
-                    ? AppColors.borderDark
-                    : AppColors.borderLight,
-                width: 1.5,
-              ),
-            ),
-            child: Icon(widget.icon, size: 24, color: AppColors.gradStart),
           ),
         ),
       ),

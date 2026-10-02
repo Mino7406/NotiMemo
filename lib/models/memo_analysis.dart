@@ -56,6 +56,7 @@ class MemoAnalysis {
     this.fallbackReason,
   });
 
+  // 기존 결과에 "왜 기본 분석을 썼는지"만 덧붙인 복사본을 만든다
   MemoAnalysis withFallbackReason(FallbackReason reason) => MemoAnalysis(
     category: category,
     priority: priority,
@@ -72,4 +73,5 @@ MemoPriority priorityFromName(String? name) =>
 
 /// 이 길이 이하의 짧은 메모는 요약을 만들지 않는다(서버와 같은 기준).
 const summaryMinMemoLength = 25;
+// 요약 최대 글자 수
 const maxSummaryLength = 30;

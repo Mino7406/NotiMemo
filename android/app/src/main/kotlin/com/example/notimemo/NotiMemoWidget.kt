@@ -26,6 +26,7 @@ class NotiMemoWidget : AppWidgetProvider() {
         private const val KEY_TAB = "tab"
         private val INACTIVE_TAB_TEXT = Color.parseColor("#FF8B93A7")
 
+        // 위젯에서 마지막으로 고른 탭(예약/내역)
         fun currentTab(ctx: Context): Int =
             ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_TAB, TAB_SCHEDULED)
 
@@ -47,6 +48,7 @@ class NotiMemoWidget : AppWidgetProvider() {
             mgr.notifyAppWidgetViewDataChanged(ids, R.id.widget_list)
         }
 
+        // 위젯 화면 하나를 만들고 누를 곳마다 동작을 연결한다
         private fun buildViews(ctx: Context, widgetId: Int, tab: Int): RemoteViews {
             val views = RemoteViews(ctx.packageName, R.layout.widget_main)
             val immutable = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -110,6 +112,7 @@ class NotiMemoWidget : AppWidgetProvider() {
         update(context, appWidgetManager, appWidgetIds)
     }
 
+    // 위젯 크기가 바뀌면 다시 그린다
     override fun onAppWidgetOptionsChanged(
         context: Context,
         appWidgetManager: AppWidgetManager,
@@ -139,6 +142,7 @@ class NotiMemoWidgetService : RemoteViewsService() {
 
         override fun onCreate() {}
 
+        // 목록을 새로 그릴 때마다 prefs에서 현재 탭에 맞는 데이터를 다시 읽는다
         override fun onDataSetChanged() {
             val prefs = ctx.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             val history = prefs.getString("flutter.memo_list", null)
@@ -153,6 +157,7 @@ class NotiMemoWidgetService : RemoteViewsService() {
 
         override fun getCount(): Int = rows.size
 
+        // 목록의 한 줄(분류, 메모, 시간)을 만든다
         override fun getViewAt(position: Int): RemoteViews {
             val row = rows.getOrNull(position) ?: return RemoteViews(ctx.packageName, R.layout.widget_item)
             val v = RemoteViews(ctx.packageName, R.layout.widget_item)

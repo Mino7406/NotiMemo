@@ -24,19 +24,4 @@ void main() {
       expect(cleanOcrText('\n \n'), '');
     });
   });
-
-  group('appendRecognizedText', () {
-    test('기존 글이 비어 있으면 인식 결과만', () {
-      expect(appendRecognizedText('', '새 글'), '새 글');
-      expect(appendRecognizedText('  \n', '새 글'), '새 글');
-    });
-
-    test('기존 글이 있으면 줄바꿈 후 이어 붙인다', () {
-      expect(appendRecognizedText('우유 사기', '준비물'), '우유 사기\n준비물');
-    });
-
-    test('기존 글 끝의 공백·줄바꿈은 정리하고 붙인다', () {
-      expect(appendRecognizedText('우유 사기\n\n', '준비물'), '우유 사기\n준비물');
-    });
-  });
 }

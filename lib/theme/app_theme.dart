@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+// 앱 전체에서 쓰는 색 모음.
 class AppColors {
   // Backgrounds
   static const bgLight = Color(0xFFF5F6FF);

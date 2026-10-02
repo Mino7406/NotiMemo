@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsStorage {
+  // 설정값을 SharedPreferences에 저장하는 클래스(테마, 진동)
   static const _keyTheme = 'theme_mode';
 
   static const _keyVibration = 'vibration_on';
@@ -17,6 +18,7 @@ class SettingsStorage {
     await prefs.setBool(_keyVibration, on);
   }
 
+  // 저장해 둔 문자열을 ThemeMode로 바꿔서 돌려준다. 값이 없으면 시스템 설정을 따른다
   static Future<ThemeMode> getThemeMode() async {
     final prefs = await SharedPreferences.getInstance();
     switch (prefs.getString(_keyTheme)) {

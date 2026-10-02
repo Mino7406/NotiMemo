@@ -6,9 +6,12 @@ import {
   validateRequest,
 } from './classify.js';
 
+// 요청 본문 최대 크기(메모 500자 정도면 충분해서 작게 잡았다)
 const MAX_BODY_BYTES = 4096;
+// 별도 설정이 없으면 쓰는 Workers AI 모델
 const DEFAULT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
+// JSON 응답을 만드는 도우미. 응답을 캐시하지 않도록 한다
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -19,6 +22,7 @@ function json(data, status = 200) {
   });
 }
 
+// 오류는 {error: 코드} 모양으로 돌려준다(앱이 이 코드를 보고 안내 문구를 고른다)
 function errorResponse(status, code) {
   return json({ error: code }, status);
 }
@@ -29,6 +33,7 @@ function isQuotaError(err) {
   return msg.includes('4006') || msg.toLowerCase().includes('daily free allocation');
 }
 
+// 메모를 받아 분류 결과를 돌려주는 본체: 크기 확인 → JSON 확인 → 횟수 제한 → AI 호출 → 결과 정리
 async function classify(request, env) {
   const text = await request.text();
   if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) {
@@ -65,6 +70,7 @@ async function classify(request, env) {
   return normalizeResult(result && result.response, input.memo);
 }
 
+// Workers가 요청을 받는 진입점. /health 와 /classify 두 주소만 쓴다
 export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);

@@ -34,6 +34,7 @@ class QuickInputActivity : Activity() {
         input.requestFocus()
     }
 
+    // 입력한 메모를 알림에 고정한다: 권한 확인 → 서비스 시작 → 내역 저장 → 위젯 갱신
     private fun pin() {
         val memo = input.text.toString().trim()
         if (memo.isEmpty()) {
@@ -73,6 +74,7 @@ class QuickInputActivity : Activity() {
         finish()
     }
 
+    // 앱의 내역 목록(flutter.memo_list) 맨 앞에 새 메모를 끼워 넣는다
     private fun addToHistory(id: String, memo: String, time: Long) {
         val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         val old = try {
@@ -86,6 +88,7 @@ class QuickInputActivity : Activity() {
     }
 
     @Suppress("DEPRECATION")
+    // 설정에서 진동이 켜져 있을 때만 진동한다
     private fun vibrateIfEnabled() {
         val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         if (!prefs.getBoolean("flutter.vibration_on", true)) return

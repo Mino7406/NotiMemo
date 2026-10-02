@@ -4,12 +4,14 @@ import '../models/memo_entry.dart';
 import '../models/scheduled_note.dart';
 import '../services/notification_service.dart';
 
+// 메모 관련 데이터를 SharedPreferences에 저장하고 읽는 곳. 고정/예약 목록은 네이티브(Kotlin)가 쓰고 여기서는 읽기만 한다
 class MemoStorage {
   static const _keyList = 'memo_list';
   static const _keyCurrent = 'saved_memo';
   static const _keyPinned = 'pinned_notes';
   static const _keyScheduled = 'scheduled_notes';
 
+  // 메모 내역을 읽는다. 옛 형식(글자만 저장)도 읽을 수 있게 MemoEntry.fromJson에서 변환한다
   static Future<List<MemoEntry>> getList() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload(); // 알림에서 고친 내용을 네이티브가 기록하므로
@@ -22,6 +24,7 @@ class MemoStorage {
     ];
   }
 
+  // 내역을 저장하고, 홈 화면 위젯도 새로 그리도록 알린다
   static Future<void> saveList(List<MemoEntry> entries) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
@@ -31,6 +34,7 @@ class MemoStorage {
     await NotificationService.refreshWidget();
   }
 
+  // 입력창에 쓰다 만 글(임시 저장)
   static Future<String?> getCurrent() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keyCurrent);
@@ -61,6 +65,7 @@ class MemoStorage {
     return ScheduledNote.parseList(prefs.getString(_keyScheduled));
   }
 
+  // 고정 목록 JSON에서 id만 뽑아낸다. JSON이 깨져 있으면 빈 값으로 처리
   static Set<String> parsePinnedIds(String? raw) {
     if (raw == null) return {};
     try {

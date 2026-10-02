@@ -20,6 +20,7 @@ ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showAppToast(
 }) {
   final messenger = ScaffoldMessenger.of(context);
   messenger.hideCurrentSnackBar(); // 이전 토스트가 쌓이지 않게 바로 교체한다
+  // 버튼 글자와 동작이 둘 다 있을 때만 오른쪽에 버튼을 붙인다
   final hasAction = actionLabel != null && onAction != null;
   return messenger.showSnackBar(
     SnackBar(

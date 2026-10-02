@@ -25,6 +25,7 @@ class NotiMemoService : Service() {
     companion object {
         const val CHANNEL_ID = "notimemo_fg_channel"
         const val GROUP_KEY = "notimemo_group"
+        // 알림 버튼과 앱에서 서비스에 보내는 명령 이름들
         const val ACTION_STOP = "com.example.notimemo.STOP"
         const val ACTION_STOP_ALL = "com.example.notimemo.STOP_ALL"
         const val ACTION_REPOST = "com.example.notimemo.REPOST"
@@ -44,6 +45,7 @@ class NotiMemoService : Service() {
         private const val LEGACY_TIME = "created_time"
         private const val LEGACY_ID = "legacy_current"
 
+        // 알림 채널(안드로이드 8 이상에서 필요)을 처음 한 번만 만든다
         fun ensureChannel(context: Context) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
             val nm = context.getSystemService(NotificationManager::class.java)
@@ -58,12 +60,15 @@ class NotiMemoService : Service() {
         }
     }
 
+    // 고정된 메모 한 건
     private class Note(val id: String, val memo: String, val time: Long)
 
+    // 포그라운드 서비스가 붙들고 있는 알림의 id. 이 알림이 지워지면 다른 알림으로 옮긴다
     private var anchorId: String? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    // 명령(action)에 따라 지우기/수정/다시 게시/새로 고정을 처리한다
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         migrateLegacy()
         when (intent?.action) {
@@ -76,6 +81,7 @@ class NotiMemoService : Service() {
                 savePinned(emptyList())
                 return afterChange()
             }
+            // 알림창에서 [수정]으로 입력한 글을 저장한다. 빈 값이면 원래 알림을 다시 띄운다
             ACTION_EDIT -> {
                 val id = intent.getStringExtra(EXTRA_ID) ?: return stickyIfAny()
                 val note = loadPinned().firstOrNull { it.id == id } ?: return stickyIfAny()
@@ -91,6 +97,7 @@ class NotiMemoService : Service() {
                 sendBroadcast(Intent("com.example.notimemo.DISMISSED").apply { setPackage(packageName) })
                 return START_STICKY
             }
+            // 알림을 밀어서 지운 경우 다시 게시한다(고정 알림은 사라지면 안 되므로)
             ACTION_REPOST -> {
                 val id = intent.getStringExtra(EXTRA_ID) ?: return stickyIfAny()
                 val note = loadPinned().firstOrNull { it.id == id } ?: return stickyIfAny()
@@ -115,6 +122,7 @@ class NotiMemoService : Service() {
         }
     }
 
+    // 고정된 메모가 남아 있을 때만 서비스를 계속 유지한다
     private fun stickyIfAny(): Int {
         if (loadPinned().isEmpty()) {
             stopSelf()
@@ -144,6 +152,7 @@ class NotiMemoService : Service() {
         return START_STICKY
     }
 
+    // 알림 하나를 게시한다. 첫 알림은 포그라운드 서비스로, 나머지는 일반 notify로 올린다
     private fun post(note: Note) {
         ensureChannel()
         val notification = buildNotification(note)
@@ -160,6 +169,7 @@ class NotiMemoService : Service() {
         }
     }
 
+    // 알림 모양을 만든다: 제목, 메모 내용, [수정] [지우기] 버튼
     private fun buildNotification(note: Note): Notification {
         val openAppIntent = PendingIntent.getActivity(
             this, 1,
@@ -220,6 +230,7 @@ class NotiMemoService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+    // 문자열 id를 알림 번호(정수)로 바꾼다. 0은 쓸 수 없어서 1로 대신한다
     private fun notifId(id: String): Int {
         val h = id.hashCode()
         return if (h == 0) 1 else h
@@ -229,6 +240,7 @@ class NotiMemoService : Service() {
 
     private fun flutterPrefs() = getSharedPreferences(FLUTTER_PREFS, Context.MODE_PRIVATE)
 
+    // 고정 목록을 prefs의 JSON에서 읽는다. 깨져 있으면 빈 목록
     private fun loadPinned(): List<Note> {
         val raw = flutterPrefs().getString(PREF_PINNED, null) ?: return emptyList()
         return try {
@@ -242,6 +254,7 @@ class NotiMemoService : Service() {
         }
     }
 
+    // 고정 목록을 prefs에 JSON으로 저장한다
     private fun savePinned(list: List<Note>) {
         val editor = flutterPrefs().edit()
         if (list.isEmpty()) {

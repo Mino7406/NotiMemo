@@ -11,7 +11,9 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
+// Flutter 화면을 띄우는 액티비티. Flutter에서 오는 요청(알림 고정, 예약, 진동 등)을 받아서 처리한다
 class MainActivity : FlutterActivity() {
+    // Flutter 쪽 NotificationService의 채널 이름과 같아야 한다
     private val channel = "com.example.notimemo/notification"
     private var methodChannel: MethodChannel? = null
 
@@ -32,6 +34,7 @@ class MainActivity : FlutterActivity() {
         methodChannel?.invokeMethod("openTarget", target)
     }
 
+    // 알림이 바뀌었다는 방송을 받으면 Flutter에 알려서 화면을 새로 읽게 한다
     private val dismissedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             methodChannel?.invokeMethod("notificationDismissed", null)
@@ -43,6 +46,7 @@ class MainActivity : FlutterActivity() {
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channel)
         methodChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
+                // 메모를 알림창에 고정: 서비스를 시작하면서 메모 내용을 넘긴다
                 "show" -> {
                     val memo = call.argument<String>("memo") ?: ""
                     val intent = Intent(this, NotiMemoService::class.java).apply {
@@ -57,6 +61,7 @@ class MainActivity : FlutterActivity() {
                     }
                     result.success(null)
                 }
+                // id가 있으면 그 알림만, 없으면 전부 내린다
                 "cancel" -> {
                     val id = call.argument<String>("id")
                     startService(Intent(this, NotiMemoService::class.java).apply {
@@ -85,6 +90,7 @@ class MainActivity : FlutterActivity() {
                     restorePinnedIfMissing()
                     result.success(null)
                 }
+                // 예약 알람 등록
                 "schedule" -> {
                     val id = call.argument<String>("id")
                     val memo = call.argument<String>("memo")
@@ -100,7 +106,9 @@ class MainActivity : FlutterActivity() {
                     call.argument<String>("id")?.let { AlarmScheduler.cancel(this, it) }
                     result.success(null)
                 }
+                // 정확한 알람을 쓸 수 있는지 확인
                 "canScheduleExact" -> result.success(AlarmScheduler.canScheduleExact(this))
+                // 안드로이드 12 이상에서 정확한 알람 허용 설정 화면을 연다
                 "requestExactAlarm" -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
@@ -115,6 +123,7 @@ class MainActivity : FlutterActivity() {
     }
 
     @Suppress("DEPRECATION")
+    // 60ms 정도 짧게 진동한다(안드로이드 버전마다 방법이 달라서 나눠 처리)
     private fun vibrateShort() {
         val v = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             getSystemService(android.os.VibratorManager::class.java).defaultVibrator
@@ -139,6 +148,7 @@ class MainActivity : FlutterActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
     }
 
+    // 화면이 보이는 동안만 알림 변경 방송을 듣는다
     override fun onStart() {
         super.onStart()
         val filter = IntentFilter("com.example.notimemo.DISMISSED")

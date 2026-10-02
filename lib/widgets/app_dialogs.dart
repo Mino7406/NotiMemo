@@ -83,6 +83,7 @@ class _AppDialog extends StatelessWidget {
   }
 }
 
+// 취소 계열 버튼(회색 윤곽선)
 Widget _cancelButton(
   BuildContext ctx,
   Color subColor,
@@ -95,6 +96,7 @@ Widget _cancelButton(
   );
 }
 
+// 확인 계열 버튼(강조 색)
 Widget _confirmButton(
   String label,
   VoidCallback onPressed, {
@@ -251,6 +253,7 @@ Future<int?> showLeadTimeDialog(
   );
 }
 
+// 여유 시간(분)을 숫자로 직접 입력받는 창
 class _LeadTimeDialog extends StatefulWidget {
   final int initial;
   final int max;
@@ -269,11 +272,13 @@ class _LeadTimeDialogState extends State<_LeadTimeDialog> {
     super.dispose();
   }
 
+  // 입력한 값이 정상(0 이상, 최댓값 이하)이면 그 숫자, 아니면 null
   int? get _value {
     final v = int.tryParse(_ctrl.text);
     return v != null && v <= widget.max ? v : null;
   }
 
+  // 올바른 값일 때만 창을 닫으면서 값을 돌려준다
   void _submit() {
     final v = _value;
     if (v != null) Navigator.pop(context, v);

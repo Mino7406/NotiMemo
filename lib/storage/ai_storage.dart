@@ -30,6 +30,7 @@ class AiStorage {
     final prefs = await SharedPreferences.getInstance();
     var id = prefs.getString(_keyDeviceId);
     if (id == null || id.isEmpty) {
+      // 처음 한 번만 무작위 문자열로 기기 id를 만든다
       final rng = Random.secure();
       const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
       id = List.generate(24, (_) => chars[rng.nextInt(chars.length)]).join();
@@ -38,6 +39,7 @@ class AiStorage {
     return id;
   }
 
+  // 하루 사용 횟수를 세기 위한 날짜 문자열(예: 2026-10-02)
   static String _dateKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
@@ -48,6 +50,7 @@ class AiStorage {
     return prefs.getInt(_keyUsageCount) ?? 0;
   }
 
+  // 서버를 부를 때마다 오늘 횟수를 1 올린다. 날짜가 바뀌었으면 1부터 다시 센다
   static Future<void> addUsage(DateTime now) async {
     final prefs = await SharedPreferences.getInstance();
     final today = _dateKey(now);

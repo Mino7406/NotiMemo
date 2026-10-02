@@ -33,8 +33,10 @@ class _MaxValueFormatter extends TextInputFormatter {
 /// 날짜 휠이 보여 주는 일수(약 1년).
 const _dayCount = 365;
 
+// 시각을 버리고 날짜만 남긴다(날짜끼리 비교할 때 쓴다)
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
+// 예약 시각 선택 시트 본체. 날짜 휠 + 오전/오후 + 시·분 입력으로 구성된다
 class _ScheduleSheet extends StatefulWidget {
   final DateTime? initial;
   const _ScheduleSheet({this.initial});
@@ -44,6 +46,7 @@ class _ScheduleSheet extends StatefulWidget {
 }
 
 class _ScheduleSheetState extends State<_ScheduleSheet> {
+  // 날짜 휠 한 칸의 높이
   static const _itemExtent = 44.0;
 
   late final DateTime _today = _dateOnly(DateTime.now());
@@ -51,10 +54,12 @@ class _ScheduleSheetState extends State<_ScheduleSheet> {
   /// 마지막으로 올바르게 정해진 시각. 입력 칸이 잘못된 동안에는 이 값이 그대로 남는다.
   late DateTime _selected = _initialSelection();
 
+  // 날짜 휠, 시 입력 칸, 분 입력 칸을 조작하는 컨트롤러
   late final _dayCtrl = FixedExtentScrollController(initialItem: _dayIndex);
   late final _hourCtrl = TextEditingController(text: '$_hour12');
   late final _minCtrl = TextEditingController(text: _two(_selected.minute));
 
+  // 시트가 열릴 때 처음 고정할 시각. 받은 시각이 미래이면 그대로 쓰고, 아니면 지금부터 10분 뒤로 잡는다
   DateTime _initialSelection() {
     final now = DateTime.now();
     final wanted = widget.initial;
@@ -91,6 +96,7 @@ class _ScheduleSheetState extends State<_ScheduleSheet> {
     return null;
   }
 
+  // 입력 칸이 잘못된 값이면 빨갛게 표시하기 위한 검사
   bool get _hourBad {
     final h = int.tryParse(_hourCtrl.text);
     return _hourCtrl.text.isNotEmpty && (h == null || h < 1 || h > 12);
@@ -101,8 +107,10 @@ class _ScheduleSheetState extends State<_ScheduleSheet> {
     return _minCtrl.text.isNotEmpty && (m == null || m > 59);
   }
 
+  // 입력이 올바르고 미래일 때만 확인 버튼을 누를 수 있다
   bool get _canConfirm => _problem == null && _selected.isAfter(DateTime.now());
 
+  // 확인 버튼에 보여줄 글. 문제가 있으면 문제를, 없으면 고른 시각을 알려준다
   String get _confirmLabel {
     final p = _problem;
     if (p != null) return p;
@@ -135,6 +143,7 @@ class _ScheduleSheetState extends State<_ScheduleSheet> {
     setState(() {});
   }
 
+  // 오전/오후를 바꾸면 12시간만큼 옮긴다
   void _setPm(bool pm) {
     if (pm == _pm) return;
     setState(() {
@@ -169,11 +178,13 @@ class _ScheduleSheetState extends State<_ScheduleSheet> {
     });
   }
 
+  // 고른 시각을 시·분 입력 칸에 다시 써 넣는다
   void _syncFields() {
     _hourCtrl.text = '$_hour12';
     _minCtrl.text = _two(_selected.minute);
   }
 
+  // 날짜 휠을 돌리면 날짜만 바꾸고 시각은 그대로 둔다
   void _onDayWheel(int i) {
     final d = _today.add(Duration(days: i.clamp(0, _dayCount - 1)));
     setState(() {
@@ -201,6 +212,7 @@ class _ScheduleSheetState extends State<_ScheduleSheet> {
     );
   }
 
+  // 빠른 선택 칩 목록. 오늘 저녁 7시는 아직 안 지났을 때만 나온다
   List<(String, DateTime)> _quickPicks() {
     final now = DateTime.now();
     final base = DateTime(now.year, now.month, now.day, now.hour, now.minute);
@@ -219,9 +231,11 @@ class _ScheduleSheetState extends State<_ScheduleSheet> {
     return picks;
   }
 
+  // 날짜 휠 한 칸에 보여줄 글
   String _dayLabel(int i) =>
       dateLabel(_today.add(Duration(days: i)), today: _today);
 
+  // 오전/오후 토글 버튼
   Widget _ampmToggle(Color border, Color sub) {
     Widget seg(String label, bool pm) {
       final on = _pm == pm;

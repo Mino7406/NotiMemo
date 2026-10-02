@@ -60,6 +60,7 @@
   - 기본 4×2, 가로 4~5칸(5×2까지), 세로 자유. 갱신: 예약·내역·알림 수정 때 `NotiMemoWidget.refresh`(Flutter 쪽은 `MemoStorage.saveList` → `refreshWidget` 채널), 30분 주기.
   - 실험으로 4×1(입력줄+버튼만) 압축 모드를 만들었다가 사용자 결정으로 롤백했다.
 - 자동 테스트 393개, `flutter analyze` 무결점(위젯은 자동 테스트 없음, 실기기로 확인).
+- **정리·마무리(집 세션)**: `AiClassifier.dailyLimit`을 `releaseDailyLimit`(20)로 복구(개발용 상수 삭제), `flutter_local_notifications` 의존성과 매니페스트 receiver 제거, 설정 > 앱 정보 > `업데이트 확인`이 GitHub 주소로 이동하는 대신 최신 버전을 감지(`UpdateService.check()` → 새 버전 안내 창 / "최신 버전" 토스트 / 실패 토스트). 소스 제출용으로 **안드로이드 전용**으로 정리해 `ios/ macos/ windows/ linux/ web/`, `apk_extract/`, `build_log.txt`, `devtools_options.yaml`, `.vscode/`를 지웠고, 쓰이지 않던 코드(`HistoryButton`, `SquareIconButton`, `appendRecognizedText`, `NotificationService.initialize`, `MemoEntry.pinned`)도 삭제했다. 주요 코드에 짧은 주석 추가(코드 변경 없음). Play Console 등록정보 관련 변경(`applicationId`, 등록정보 초안)은 하지 않기로 했다.
 - **다음 순서(사용자 결정)**: 3.0.0 정식 릴리스 준비(마지막 단계): `AiClassifier.dailyLimit`→`releaseDailyLimit`(20) 복구, 버전 3.0.0, 설정 화면 `업데이트` 날짜, 미사용 의존성 정리, README·릴리스 노트(v2.6.0 사용자는 삭제 후 재설치).
 
 ### 사무실 세션 기록 (2026-10-02 저녁) — 사진 가져오기·진동·복구 (모두 `master`, 자동 테스트 390개)

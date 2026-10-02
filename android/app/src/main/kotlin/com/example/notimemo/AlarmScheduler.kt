@@ -26,6 +26,7 @@ object AlarmScheduler {
 
     class Scheduled(val id: String, val memo: String, val at: Long)
 
+    // 저장된 예약 목록을 읽는다
     fun load(ctx: Context): List<Scheduled> {
         val raw = ctx.getSharedPreferences(FLUTTER_PREFS, Context.MODE_PRIVATE)
             .getString(PREF_SCHEDULED, null) ?: return emptyList()
@@ -40,6 +41,7 @@ object AlarmScheduler {
         }
     }
 
+    // 예약 목록을 저장하고 위젯도 새로 그린다
     private fun save(ctx: Context, list: List<Scheduled>) {
         val editor = ctx.getSharedPreferences(FLUTTER_PREFS, Context.MODE_PRIVATE).edit()
         if (list.isEmpty()) {
@@ -59,12 +61,14 @@ object AlarmScheduler {
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
             ctx.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 
+    // 같은 id의 예약이 있으면 덮어쓰고 알람을 등록한다
     fun schedule(ctx: Context, id: String, memo: String, at: Long) {
         val s = Scheduled(id, memo, at)
         save(ctx, load(ctx).filter { it.id != id } + s)
         setAlarm(ctx, s)
     }
 
+    // 예약을 목록에서 지우고 알람도 취소한다
     fun cancel(ctx: Context, id: String) {
         save(ctx, load(ctx).filter { it.id != id })
         ctx.getSystemService(AlarmManager::class.java).cancel(pendingIntent(ctx, id))
@@ -107,6 +111,7 @@ object AlarmScheduler {
         ctx.sendBroadcast(Intent("com.example.notimemo.DISMISSED").apply { setPackage(ctx.packageName) })
     }
 
+    // 고정하지 못할 때(부팅 직후 등) 쓰는 일반 알림
     private fun postPlain(ctx: Context, s: Scheduled) {
         NotiMemoService.ensureChannel(ctx)
         val open = PendingIntent.getActivity(
@@ -128,6 +133,7 @@ object AlarmScheduler {
         ctx.getSystemService(NotificationManager::class.java).notify(s.id.hashCode(), n)
     }
 
+    // 정확한 알람 권한이 있으면 정확히, 없으면 조금 늦을 수 있는 방식으로 등록한다
     private fun setAlarm(ctx: Context, s: Scheduled) {
         val am = ctx.getSystemService(AlarmManager::class.java)
         val pi = pendingIntent(ctx, s.id)
@@ -151,6 +157,7 @@ object AlarmScheduler {
         )
 }
 
+// 예약 시각이 되면 안드로이드가 불러주는 곳
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getStringExtra(AlarmScheduler.EXTRA_ID) ?: return
@@ -158,6 +165,7 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 }
 
+// 재부팅이나 앱 업데이트 뒤에 사라진 알람을 다시 등록한다
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {

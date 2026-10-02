@@ -72,6 +72,7 @@ Rect? findRectByKey(Key key) {
   return ro.localToGlobal(Offset.zero) & ro.size;
 }
 
+// 사용 방법 화면. 어두운 막 위에 말풍선을 올리고 단계를 넘기는 동작을 맡는다
 class CoachMarkOverlay extends StatefulWidget {
   final List<CoachStep> steps;
   const CoachMarkOverlay({super.key, required this.steps});
@@ -84,7 +85,9 @@ class _CoachMarkOverlayState extends State<CoachMarkOverlay> {
   int _index = 0;
   Rect? _rect;
   bool _ready = false;
+  // 단계를 바꾸는 중에 버튼이 연속으로 눌리는 것을 막는다
   bool _busy = false;
+  // 대상의 위치가 바뀌는지 계속 지켜보는 타이머
   Timer? _track;
 
   bool get _isLast => _index == widget.steps.length - 1;

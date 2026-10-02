@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/home_screen.dart';
-import 'services/notification_service.dart';
 import 'storage/settings_storage.dart';
 import 'theme/app_theme.dart';
 
+// 현재 테마(시스템/라이트/다크). 값이 바뀌면 MaterialApp이 다시 그려진다
 final _themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
 
+// 앱 시작점: 저장된 테마를 읽고 나서 화면을 띄운다
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-  ));
-  try {
-    await NotificationService.initialize();
-  } catch (_) {}
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
+  );
   _themeModeNotifier.value = await SettingsStorage.getThemeMode();
   runApp(const NotiMemoApp());
 }
@@ -37,6 +35,7 @@ class NotiMemoApp extends StatelessWidget {
     );
   }
 
+  // 라이트/다크 공통 테마. 색은 AppColors에서 가져온다
   ThemeData _buildTheme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
     return ThemeData(
@@ -60,6 +59,7 @@ class _AppShell extends StatelessWidget {
   final ThemeMode currentMode;
   const _AppShell({required this.currentMode});
 
+  // 설정 화면에서 테마를 바꾸면 화면에 바로 반영하고 저장도 해 둔다
   void _changeTheme(ThemeMode mode) {
     _themeModeNotifier.value = mode;
     SettingsStorage.setThemeMode(mode);
@@ -67,9 +67,6 @@ class _AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HomeScreen(
-      currentMode: currentMode,
-      onThemeChanged: _changeTheme,
-    );
+    return HomeScreen(currentMode: currentMode, onThemeChanged: _changeTheme);
   }
 }

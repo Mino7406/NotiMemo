@@ -12,17 +12,16 @@ void main() {
       expect(e.id, 'legacy_0');
       expect(e.memo, '우유 사기');
       expect(e.time, 0);
-      expect(e.pinned, isFalse);
       expect(e.priority, MemoPriority.normal);
       expect(e.category, isNull);
       expect(e.scheduledAt, isNull);
     });
 
     test('v2 포맷({memo,time})', () {
-      final e = MemoEntry.fromJson(
-        {'memo': '숙제', 'time': 1700000000000},
-        fallbackId: 'legacy_3',
-      );
+      final e = MemoEntry.fromJson({
+        'memo': '숙제',
+        'time': 1700000000000,
+      }, fallbackId: 'legacy_3');
       expect(e.id, 'legacy_3');
       expect(e.time, 1700000000000);
     });
@@ -32,7 +31,6 @@ void main() {
         id: 'a1',
         memo: '준비물',
         time: 5,
-        pinned: true,
         category: '학교',
         priority: MemoPriority.high,
         summary: '준비물 챙기기',
@@ -43,7 +41,6 @@ void main() {
         fallbackId: 'unused',
       );
       expect(restored.id, 'a1');
-      expect(restored.pinned, isTrue);
       expect(restored.category, '학교');
       expect(restored.priority, MemoPriority.high);
       expect(restored.summary, '준비물 챙기기');
@@ -51,10 +48,11 @@ void main() {
     });
 
     test('알 수 없는 우선순위 값은 normal', () {
-      final e = MemoEntry.fromJson(
-        {'memo': 'x', 'time': 1, 'priority': 'urgent!!'},
-        fallbackId: 'f',
-      );
+      final e = MemoEntry.fromJson({
+        'memo': 'x',
+        'time': 1,
+        'priority': 'urgent!!',
+      }, fallbackId: 'f');
       expect(e.priority, MemoPriority.normal);
     });
 

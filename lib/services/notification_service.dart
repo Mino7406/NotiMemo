@@ -3,10 +3,10 @@ import 'package:permission_handler/permission_handler.dart';
 import '../models/memo_entry.dart';
 import '../storage/settings_storage.dart';
 
+// 알림·알람은 모두 안드로이드(Kotlin) 쪽에서 처리한다. 이 클래스는 MethodChannel로 그쪽을 부르는 얇은 창구다
 class NotificationService {
+  // Flutter와 Kotlin이 말을 주고받는 통로 이름(MainActivity와 같아야 한다)
   static const _channel = MethodChannel('com.example.notimemo/notification');
-
-  static Future<void> initialize() async {}
 
   /// 설정에서 진동이 켜져 있으면 짧게 진동한다(알림 생성·예약 완료·재게시 때).
   static Future<void> vibrate() async {
@@ -58,6 +58,7 @@ class NotificationService {
     }
   }
 
+  // 정해진 시각에 고정되도록 알람을 등록한다
   static Future<void> schedule(MemoEntry entry, DateTime at) async {
     await _channel.invokeMethod('schedule', {
       'id': entry.id,
@@ -66,6 +67,7 @@ class NotificationService {
     });
   }
 
+  // 등록해 둔 예약 알람을 취소한다
   static Future<void> cancelSchedule(String id) async {
     await _channel.invokeMethod('cancelSchedule', {'id': id});
   }
@@ -74,10 +76,12 @@ class NotificationService {
   static Future<bool> canScheduleExact() async =>
       await _channel.invokeMethod<bool>('canScheduleExact') ?? true;
 
+  // 정확한 알람 허용 설정 화면을 연다
   static Future<void> requestExactAlarm() async {
     await _channel.invokeMethod('requestExactAlarm');
   }
 
+  // 메모를 알림창에 고정한다(알림 서비스를 시작한다)
   static Future<void> show(MemoEntry entry) async {
     await _channel.invokeMethod('show', {
       'id': entry.id,
@@ -91,6 +95,7 @@ class NotificationService {
     await _channel.invokeMethod('cancel', {'id': id});
   }
 
+  // 알림 권한 요청 창을 띄운다. 허용되면 true
   static Future<bool> requestPermission() async {
     final status = await Permission.notification.request();
     return status.isGranted;
@@ -119,7 +124,7 @@ class NotificationService {
     return requestPermission();
   }
 
-  // Returns: 'granted', 'denied', 'permanentlyDenied'
+  // 현재 알림 권한 상태: 'granted'(허용), 'denied'(거부), 'permanentlyDenied'(다시 묻지 않음)
   static Future<String> checkPermission() async {
     final status = await Permission.notification.status;
     if (status.isGranted) return 'granted';

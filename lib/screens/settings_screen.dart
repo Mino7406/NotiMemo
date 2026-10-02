@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../services/notification_service.dart';
 import '../services/update_service.dart';
 import '../storage/ai_storage.dart';
@@ -11,6 +10,7 @@ import '../utils/reminder_time.dart';
 import '../widgets/app_dialogs.dart';
 import '../widgets/app_toast.dart';
 
+// 설정 화면: 테마, 진동, AI 사용, 앱 정보
 class SettingsScreen extends StatefulWidget {
   final ThemeMode currentMode;
   final void Function(ThemeMode) onThemeChanged;
@@ -26,10 +26,15 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  // 앱 버전(앱 정보에 표시)
   String _version = '';
+  // 업데이트 확인 중에 버튼이 중복으로 눌리지 않게 하는 표시
+  bool _checkingUpdate = false;
   late ThemeMode _currentMode;
+  // AI 기능 동의 여부
   bool _aiOn = false;
   bool _autoClassify = true;
+  // AI가 알림 시각을 일정보다 앞당기는 분(기본 30)
   int _leadMinutes = defaultLeadMinutes;
   bool _vibration = true;
 
@@ -41,6 +46,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadAi();
   }
 
+  /// 최신 버전을 확인해서 새 버전이 있으면 안내 창을, 아니면 결과를 토스트로 알린다.
+  Future<void> _checkUpdate() async {
+    if (_checkingUpdate) return;
+    setState(() => _checkingUpdate = true);
+    final result = await UpdateService.check();
+    if (!mounted) return;
+    setState(() => _checkingUpdate = false);
+    switch (result.status) {
+      case UpdateStatus.available:
+        showUpdateDialog(context, result.version!);
+      case UpdateStatus.upToDate:
+        showAppToast(context, '최신 버전을 사용하고 있어요.');
+      case UpdateStatus.failed:
+        showAppToast(
+          context,
+          '업데이트를 확인하지 못했어요. 인터넷 연결을 확인해 주세요.',
+          isError: true,
+        );
+    }
+  }
+
+  // 저장된 AI·진동 설정을 읽어서 화면에 반영한다
   Future<void> _loadAi() async {
     final consent = await AiStorage.getConsent();
     final lead = await AiStorage.getLeadMinutes();
@@ -56,6 +83,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  // 진동을 켜고 끈다. 켜는 순간 한 번 진동해서 느낌을 보여준다
   Future<void> _setVibration(bool on) async {
     await SettingsStorage.setVibration(on);
     if (mounted) setState(() => _vibration = on);
@@ -72,6 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) setState(() => _leadMinutes = minutes);
   }
 
+  // 여유 시간을 직접 입력하는 창을 연다
   Future<void> _askCustomLead() async {
     final minutes = await showLeadTimeDialog(
       context,
@@ -94,11 +123,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) setState(() => _aiOn = agreed);
   }
 
+  // 패키지 정보에서 앱 버전을 읽어 온다
   Future<void> _loadVersion() async {
     final info = await PackageInfo.fromPlatform();
     if (mounted) setState(() => _version = info.version);
   }
 
+  // 테마를 바꾸면 화면에 바로 반영하고 앱 전체에도 알려준다
   void _changeTheme(ThemeMode mode) {
     setState(() => _currentMode = mode);
     widget.onThemeChanged(mode);
@@ -215,6 +246,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       textColor: textColor,
                       subColor: subColor,
                       version: _version,
+                      checkingUpdate: _checkingUpdate,
+                      onCheckUpdate: _checkUpdate,
                     ),
                     const SizedBox(height: 36),
                     Center(
@@ -238,6 +271,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
+// 설정 묶음 위에 붙는 작은 제목
 class _SectionLabel extends StatelessWidget {
   final String label;
   final Color subColor;
@@ -259,17 +293,22 @@ class _SectionLabel extends StatelessWidget {
 
 const _contactEmail = 'rlaalsgh7406@gmail.com';
 
+// 앱 정보 카드(버전, 업데이트 확인, 문의, 업데이트 날짜)
 class _AppInfoCard extends StatelessWidget {
   final bool isDark;
   final Color textColor;
   final Color subColor;
   final String version;
+  final bool checkingUpdate;
+  final VoidCallback onCheckUpdate;
 
   const _AppInfoCard({
     required this.isDark,
     required this.textColor,
     required this.subColor,
     required this.version,
+    required this.checkingUpdate,
+    required this.onCheckUpdate,
   });
 
   @override
@@ -309,13 +348,11 @@ class _AppInfoCard extends StatelessWidget {
                   ),
                   const Spacer(),
                   GestureDetector(
-                    onTap: () => launchUrl(
-                      Uri.parse(UpdateService.releasesUrl),
-                      mode: LaunchMode.externalApplication,
-                    ),
-                    child: const Text(
-                      '업데이트 확인',
-                      style: TextStyle(
+                    key: const Key('check-update'),
+                    onTap: checkingUpdate ? null : onCheckUpdate,
+                    child: Text(
+                      checkingUpdate ? '확인 중...' : '업데이트 확인',
+                      style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: AppColors.gradStart,
@@ -375,6 +412,7 @@ class _AppInfoCard extends StatelessWidget {
   }
 }
 
+// 앱 정보 카드 안의 한 줄(왼쪽 이름, 오른쪽 내용)
 class _InfoRow extends StatelessWidget {
   final String label;
   final Color textColor;
@@ -405,6 +443,7 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+// 시스템/라이트/다크 중 하나를 고르는 카드
 class _ThemePicker extends StatelessWidget {
   final ThemeMode currentMode;
   final void Function(ThemeMode) onChanged;
@@ -420,6 +459,7 @@ class _ThemePicker extends StatelessWidget {
     required this.subColor,
   });
 
+  // 고를 수 있는 테마 목록
   static const _options = [
     (
       mode: ThemeMode.system,
@@ -592,6 +632,7 @@ class _AiSwitchCard extends StatelessWidget {
 
 /// AI가 제안하는 예약 알림을 일정보다 얼마나 앞당길지 고르는 카드.
 class _AiLeadCard extends StatelessWidget {
+  // 빠르게 고를 수 있는 여유 시간(분). 이 값이 아니면 직접 입력한 값으로 본다
   static const _presets = [0, 5, 10, 30, 60, 120];
 
   final int minutes;

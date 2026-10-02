@@ -9,8 +9,10 @@ class ClassFilter {
 
   const ClassFilter({this.category, this.priority});
 
+  // 아무것도 고르지 않은 상태(전체 보기)
   static const none = ClassFilter();
 
+  // 필터가 하나라도 걸려 있는지
   bool get isActive => category != null || priority != null;
 
   /// [category]는 분류가 없는(자동 분류를 껐던) 메모면 null. 분류를 고른 필터에는 걸리지 않는다.
