@@ -53,10 +53,23 @@ const _keywords = <String, List<String>>{
 const _tieOrder = ['학교', '건강', '돈', '쇼핑', '약속', '할일'];
 
 final _compiled = {
-  for (final e in _keywords.entries) e.key: [for (final k in e.value) RegExp(k)],
+  for (final e in _keywords.entries)
+    e.key: [for (final k in e.value) RegExp(k)],
 };
 
-const _urgent = ['긴급', '급하', '급히', '중요', '꼭', '반드시', '마감', '당장', '지금', '잊지', '절대'];
+const _urgent = [
+  '긴급',
+  '급하',
+  '급히',
+  '중요',
+  '꼭',
+  '반드시',
+  '마감',
+  '당장',
+  '지금',
+  '잊지',
+  '절대',
+];
 const _relaxed = ['나중에', '언젠가', '여유', '천천히', '시간날때', '심심', '구경', '생각해'];
 
 /// [memo]를 키워드로 분류한다. [now]는 예약 시각 계산과 우선순위(임박) 판단에 쓴다.
@@ -101,4 +114,36 @@ String _summary(String memo) {
   final base = firstSentence.isEmpty ? trimmed : firstSentence;
   if (base.length <= maxSummaryLength) return base;
   return '${base.substring(0, maxSummaryLength - 1).trimRight()}…';
+}
+
+/// 분류가 없는 메모에 기본(규칙 기반) 분석으로 카테고리·우선순위를 채운다.
+/// 이미 분류가 있으면(✨로 적용했거나 이전에 채웠으면) 그대로 돌려준다. 요약은 건드리지 않는다.
+/// [now]는 우선순위(일정이 임박한지) 판단의 기준 시각이다.
+MemoEntry withRuleClassification(MemoEntry entry, DateTime now) {
+  if (entry.category != null) return entry;
+  final a = classifyByRules(entry.memo, now);
+  return entry.copyWith(category: a.category, priority: a.priority);
+}
+
+/// 저장된 내역 중 분류가 없는 것을 기본 분석으로 채운다(앱을 열 때 한 번).
+/// 우선순위는 메모를 쓴 시각 기준으로 판단하고, 쓴 시각을 모르면(0) [now]를 쓴다.
+({List<MemoEntry> list, bool changed}) backfillClassification(
+  List<MemoEntry> list,
+  DateTime now,
+) {
+  var changed = false;
+  final out = [
+    for (final e in list)
+      if (e.category != null)
+        e
+      else
+        () {
+          changed = true;
+          final reference = e.time == 0
+              ? now
+              : DateTime.fromMillisecondsSinceEpoch(e.time);
+          return withRuleClassification(e, reference);
+        }(),
+  ];
+  return (list: out, changed: changed);
 }

@@ -5,7 +5,12 @@ import '../services/notification_service.dart';
 import '../storage/memo_storage.dart';
 import '../theme/app_theme.dart';
 import '../utils/analysis_labels.dart';
+import '../utils/class_filter.dart';
 import '../utils/time_format.dart';
+import 'class_filter_bar.dart';
+import 'app_dialogs.dart';
+import 'memo_list_row.dart';
+import 'notice_button.dart';
 
 /// 예약된 메모 목록 시트(알림 내역과 같은 하단 시트). 항목을 누르면 닫히면서 그 예약을
 /// 돌려줘서 홈 화면 입력창에서 고칠 수 있게 한다. 닫으면 null.
@@ -30,6 +35,15 @@ class _ScheduledSheetState extends State<_ScheduledSheet> {
 
   /// 예약 메모와 같은 id의 히스토리 기록(카테고리·우선순위 표시용).
   Map<String, MemoEntry> _entries = {};
+  ClassFilter _filter = ClassFilter.none;
+
+  ({String? category, MemoPriority priority}) _classOf(ScheduledNote n) {
+    final e = _entries[n.id];
+    return (
+      category: e?.category,
+      priority: e?.priority ?? MemoPriority.normal,
+    );
+  }
 
   @override
   void initState() {
@@ -48,6 +62,21 @@ class _ScheduledSheetState extends State<_ScheduledSheet> {
     }
   }
 
+  /// 예약을 전부 취소한다. 필터를 건 채여도 보이는 것만이 아니라 전체가 대상이다.
+  Future<void> _cancelAll(int count, bool filteredView) async {
+    final ok = await showClearAllDialog(
+      context,
+      count: count,
+      filteredView: filteredView,
+      target: ClearTarget.scheduled,
+    );
+    if (!ok || !mounted) return;
+    for (final note in List<ScheduledNote>.of(_items ?? const [])) {
+      await NotificationService.cancelSchedule(note.id);
+    }
+    await _load();
+  }
+
   Future<void> _cancel(ScheduledNote note) async {
     await NotificationService.cancelSchedule(note.id);
     await _load();
@@ -62,6 +91,15 @@ class _ScheduledSheetState extends State<_ScheduledSheet> {
     final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
     final bottomPad = MediaQuery.of(context).padding.bottom;
     final items = _items;
+    final classItems = [
+      if (items != null)
+        for (final n in items) _classOf(n),
+    ];
+    final filter = _filter.normalizedFor(classItems);
+    final shown = [
+      if (items != null)
+        for (final i in visibleIndexes(items, filter, _classOf)) items[i],
+    ];
 
     return Container(
       decoration: BoxDecoration(
@@ -115,10 +153,28 @@ class _ScheduledSheetState extends State<_ScheduledSheet> {
                     ),
                   ),
                 ],
+                const Spacer(),
+                if (items != null && items.isNotEmpty)
+                  ClearAllButton(
+                    buttonKey: const Key('scheduled-clear-all'),
+                    isDark: isDark,
+                    onPressed: () => _cancelAll(items.length, filter.isActive),
+                  ),
               ],
             ),
           ),
           const SizedBox(height: 12),
+          if (items != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: ClassFilterBar(
+                items: classItems,
+                filter: filter,
+                onChanged: (f) => setState(() => _filter = f),
+                isDark: isDark,
+                subColor: subColor,
+              ),
+            ),
           if (items == null)
             const SizedBox(height: 80)
           else if (items.isEmpty)
@@ -139,6 +195,26 @@ class _ScheduledSheetState extends State<_ScheduledSheet> {
                 ],
               ),
             )
+          else if (shown.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+              child: Column(
+                children: [
+                  Text(
+                    '조건에 맞는 예약이 없어요',
+                    key: const Key('scheduled-filter-empty'),
+                    style: TextStyle(color: subColor, fontSize: 15),
+                  ),
+                  const SizedBox(height: 8),
+                  NoticeButton(
+                    key: const Key('scheduled-filter-reset'),
+                    label: '필터 해제',
+                    color: AppColors.gradStart,
+                    onPressed: () => setState(() => _filter = ClassFilter.none),
+                  ),
+                ],
+              ),
+            )
           else
             ConstrainedBox(
               constraints: BoxConstraints(
@@ -147,10 +223,10 @@ class _ScheduledSheetState extends State<_ScheduledSheet> {
               child: ListView.separated(
                 shrinkWrap: true,
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                itemCount: items.length,
+                itemCount: shown.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (_, i) {
-                  final note = items[i];
+                  final note = shown[i];
                   return Dismissible(
                     key: ValueKey(note.id),
                     direction: DismissDirection.endToStart,
@@ -182,70 +258,24 @@ class _ScheduledSheetState extends State<_ScheduledSheet> {
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: borderColor),
                           ),
-                          child: Row(
-                            children: [
-                              ShaderMask(
-                                shaderCallback: (b) =>
-                                    AppColors.brandGradient.createShader(b),
-                                child: const Icon(
-                                  Icons.schedule_rounded,
-                                  color: Colors.white,
-                                  size: 15,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (_entries[note.id] != null &&
-                                        classLabel(_entries[note.id]!) !=
-                                            null) ...[
-                                      Text(
-                                        classLabel(_entries[note.id]!)!,
-                                        key: Key('scheduled-label-${note.id}'),
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.gradStart,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                    ],
-                                    Text(
-                                      note.memo,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: textColor,
-                                        height: 1.45,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      formatEntryTime(note.at),
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: subColor.withAlpha(160),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              IconButton(
+                          child: MemoListRow(
+                            icon: Icons.schedule_rounded,
+                            label: _entries[note.id] == null
+                                ? null
+                                : classLabel(_entries[note.id]!),
+                            labelKey: Key('scheduled-label-${note.id}'),
+                            memo: note.memo,
+                            memoMaxLines: 2,
+                            timeText: formatEntryTime(note.at),
+                            textColor: textColor,
+                            subColor: subColor,
+                            actions: [
+                              OutlinedIconAction(
+                                key: Key('scheduled-cancel-${note.id}'),
+                                icon: Icons.close_rounded,
                                 tooltip: '예약 취소',
-                                icon: Icon(
-                                  Icons.close_rounded,
-                                  size: 18,
-                                  color: subColor,
-                                ),
-                                onPressed: () => _cancel(note),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(
-                                  minWidth: 32,
-                                  minHeight: 32,
-                                ),
+                                isDark: isDark,
+                                onTap: () => _cancel(note),
                               ),
                             ],
                           ),

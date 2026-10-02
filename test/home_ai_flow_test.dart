@@ -323,7 +323,7 @@ void main() {
     await openMenu(tester);
     await tester.tap(find.byKey(const Key('menu-history')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('치과 예약'));
+    await tester.tap(find.byKey(const Key('history-restore-a')));
     await tester.pumpAndSettle();
     expect(find.text('바로 고정'), findsOneWidget);
     await tester.tap(find.text('예약해서 고정'));
@@ -337,7 +337,7 @@ void main() {
     await openMenu(tester);
     await tester.tap(find.byKey(const Key('menu-history')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('치과 예약'));
+    await tester.tap(find.byKey(const Key('history-restore-a')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('바로 고정'));
     await tester.pumpAndSettle();

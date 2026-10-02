@@ -123,4 +123,71 @@ void main() {
   test('카테고리 목록은 서버와 같다', () {
     expect(memoCategories, ['학교', '할일', '약속', '쇼핑', '건강', '돈', '기타']);
   });
+
+  group('withRuleClassification / backfillClassification', () {
+    MemoEntry entry(String memo, {int time = 1, String? category}) =>
+        MemoEntry(id: memo, memo: memo, time: time, category: category);
+
+    test('분류가 없으면 기본 분석으로 카테고리·우선순위를 채운다', () {
+      final e = withRuleClassification(entry('수학 숙제 하기'), now);
+      expect(e.category, '학교');
+      expect(e.priority, MemoPriority.normal);
+      expect(e.summary, isNull); // 요약은 건드리지 않는다
+    });
+
+    test('이미 분류가 있으면 그대로(✨로 적용한 값을 덮어쓰지 않는다)', () {
+      final e = entry('수학 숙제 하기', category: '쇼핑');
+      expect(withRuleClassification(e, now).category, '쇼핑');
+    });
+
+    test('급함 표현은 high로', () {
+      expect(
+        withRuleClassification(entry('꼭 챙기기'), now).priority,
+        MemoPriority.high,
+      );
+    });
+
+    test('backfill: 분류 없는 것만 채우고 순서·id는 그대로', () {
+      final list = [
+        entry('수학 숙제 하기'),
+        entry('우유 사기', category: '건강'),
+        entry('방 청소하기'),
+      ];
+      final r = backfillClassification(list, now);
+      expect(r.changed, isTrue);
+      expect(r.list.map((e) => e.id), ['수학 숙제 하기', '우유 사기', '방 청소하기']);
+      expect(r.list.map((e) => e.category), ['학교', '건강', '할일']);
+    });
+
+    test('backfill: 모두 분류돼 있으면 changed=false', () {
+      final r = backfillClassification([entry('a', category: '학교')], now);
+      expect(r.changed, isFalse);
+    });
+
+    test('backfill: 빈 목록', () {
+      final r = backfillClassification([], now);
+      expect(r.list, isEmpty);
+      expect(r.changed, isFalse);
+    });
+
+    test('backfill: 우선순위는 메모를 쓴 시각 기준', () {
+      // 쓴 시각 9/30 10:00 기준 내일 15:00 = 29시간 뒤 → normal
+      final wrote = DateTime(2026, 9, 30, 10).millisecondsSinceEpoch;
+      final r = backfillClassification([
+        entry('내일 오후 3시 치과', time: wrote),
+      ], now);
+      expect(r.list.single.priority, MemoPriority.normal);
+      // 쓴 시각 9/30 20:00 기준 내일 09:00 = 13시간 뒤 → high
+      final soon = DateTime(2026, 9, 30, 20).millisecondsSinceEpoch;
+      final r2 = backfillClassification([
+        entry('내일 오전 9시 치과', time: soon),
+      ], now);
+      expect(r2.list.single.priority, MemoPriority.high);
+    });
+
+    test('backfill: 쓴 시각을 모르면(0) 지금 기준', () {
+      final r = backfillClassification([entry('내일 오전 9시 치과', time: 0)], now);
+      expect(r.list.single.priority, MemoPriority.high);
+    });
+  });
 }

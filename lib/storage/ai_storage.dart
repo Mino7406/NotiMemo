@@ -78,6 +78,14 @@ class AiStorage {
     return prefs.getBool(_keyAutoClassify) ?? true;
   }
 
+  /// 메모를 저장할 때 분류를 자동으로 채워도 되는지.
+  /// AI를 쓰지 않는 경우(동의 안 함·거부)에는 "자동 분류" 설정 항목이 보이지 않으므로
+  /// 예전에 꺼 둔 값과 상관없이 허용한다. AI를 켠 경우에만 그 설정을 따른다.
+  static Future<bool> classificationEnabled() async {
+    if (await getConsent() != true) return true;
+    return getAutoClassify();
+  }
+
   static Future<void> setAutoClassify(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyAutoClassify, value);

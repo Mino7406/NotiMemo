@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import 'memo_list_row.dart';
 
 /// 오른쪽에서 밀려 나오는 메뉴. 홈 화면의 보조 기능(AI 정리, 사진, 예약, 목록, 설정, 튜토리얼)을 모았다.
 /// 항목을 누르면 메뉴를 닫고 동작을 실행한다.
@@ -154,10 +155,13 @@ class AppMenuDrawer extends StatelessWidget {
                       ),
                     ),
                   ),
-                  IconButton(
+                  OutlinedIconAction(
+                    key: const Key('menu-close'),
+                    icon: Icons.close_rounded,
                     tooltip: '닫기',
-                    icon: Icon(Icons.close_rounded, color: subColor),
-                    onPressed: () => Navigator.pop(context),
+                    size: 40,
+                    isDark: isDark,
+                    onTap: () => Navigator.pop(context),
                   ),
                 ],
               ),

@@ -240,4 +240,32 @@ void main() {
       expect(r.priority, MemoPriority.high);
     });
   });
+
+  group('AiStorage.classificationEnabled', () {
+    Future<bool> enabled(Map<String, Object> prefs) async {
+      SharedPreferences.setMockInitialValues(prefs);
+      return AiStorage.classificationEnabled();
+    }
+
+    test('AI를 안 쓰면(동의 전·거부) 자동 분류 설정과 상관없이 허용', () async {
+      expect(await enabled({}), isTrue);
+      expect(await enabled({'ai_auto_classify': false}), isTrue);
+      expect(
+        await enabled({'ai_consent': false, 'ai_auto_classify': false}),
+        isTrue,
+      );
+    });
+
+    test('AI를 켜면 자동 분류 설정을 따른다', () async {
+      expect(await enabled({'ai_consent': true}), isTrue);
+      expect(
+        await enabled({'ai_consent': true, 'ai_auto_classify': true}),
+        isTrue,
+      );
+      expect(
+        await enabled({'ai_consent': true, 'ai_auto_classify': false}),
+        isFalse,
+      );
+    });
+  });
 }

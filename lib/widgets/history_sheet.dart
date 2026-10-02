@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import '../models/memo_entry.dart';
 import '../theme/app_theme.dart';
 import '../utils/analysis_labels.dart';
+import '../utils/class_filter.dart';
+import 'app_dialogs.dart';
+import 'class_filter_bar.dart';
+import 'memo_list_row.dart';
 import '../utils/time_format.dart';
+import 'notice_button.dart';
 
 class HistorySheet extends StatefulWidget {
   final List<MemoEntry> memoList;
@@ -24,6 +29,10 @@ class HistorySheet extends StatefulWidget {
 
 class _HistorySheetState extends State<HistorySheet> {
   late List<MemoEntry> _list;
+  ClassFilter _filter = ClassFilter.none;
+
+  ({String? category, MemoPriority priority}) _classOf(MemoEntry e) =>
+      (category: e.category, priority: e.priority);
 
   @override
   void initState() {
@@ -38,6 +47,9 @@ class _HistorySheetState extends State<HistorySheet> {
     final textColor = isDark ? Colors.white : const Color(0xFF111827);
     final subColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     final bottomPad = MediaQuery.of(context).padding.bottom;
+    final classItems = [for (final e in _list) _classOf(e)];
+    final filter = _filter.normalizedFor(classItems);
+    final shownIdx = visibleIndexes(_list, filter, _classOf);
 
     return Container(
       decoration: BoxDecoration(
@@ -95,30 +107,34 @@ class _HistorySheetState extends State<HistorySheet> {
                 ],
                 const Spacer(),
                 if (_list.isNotEmpty)
-                  TextButton(
+                  ClearAllButton(
+                    buttonKey: const Key('history-clear-all'),
+                    isDark: isDark,
                     onPressed: () async {
+                      final ok = await showClearAllDialog(
+                        context,
+                        count: _list.length,
+                        filteredView: _filter.isActive,
+                      );
+                      if (!ok || !mounted) return;
                       await widget.onClearAll();
-                      setState(() => _list.clear());
+                      if (mounted) setState(() => _list.clear());
                     },
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.danger,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                    ),
-                    child: const Text(
-                      '전체삭제',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
                   ),
               ],
             ),
           ),
           const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: ClassFilterBar(
+              items: classItems,
+              filter: filter,
+              onChanged: (f) => setState(() => _filter = f),
+              isDark: isDark,
+              subColor: subColor,
+            ),
+          ),
           // List or empty state
           if (_list.isEmpty)
             Padding(
@@ -138,6 +154,26 @@ class _HistorySheetState extends State<HistorySheet> {
                 ],
               ),
             )
+          else if (shownIdx.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+              child: Column(
+                children: [
+                  Text(
+                    '조건에 맞는 메모가 없어요',
+                    key: const Key('history-filter-empty'),
+                    style: TextStyle(color: subColor, fontSize: 15),
+                  ),
+                  const SizedBox(height: 8),
+                  NoticeButton(
+                    key: const Key('history-filter-reset'),
+                    label: '필터 해제',
+                    color: AppColors.gradStart,
+                    onPressed: () => setState(() => _filter = ClassFilter.none),
+                  ),
+                ],
+              ),
+            )
           else
             ConstrainedBox(
               constraints: BoxConstraints(
@@ -146,127 +182,91 @@ class _HistorySheetState extends State<HistorySheet> {
               child: ListView.separated(
                 shrinkWrap: true,
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                itemCount: _list.length,
+                itemCount: shownIdx.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
-                itemBuilder: (_, i) => Dismissible(
-                  key: ValueKey(_list[i].id),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    decoration: BoxDecoration(
-                      color: AppColors.danger.withAlpha(200),
-                      borderRadius: BorderRadius.circular(12),
+                itemBuilder: (_, k) {
+                  final i = shownIdx[k]; // 원래 목록에서의 위치(삭제·재생성에 사용)
+                  void restore() {
+                    final entry = _list[i];
+                    Navigator.pop(context);
+                    widget.onRestore(entry);
+                  }
+
+                  return Dismissible(
+                    key: ValueKey(_list[i].id),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      decoration: BoxDecoration(
+                        color: AppColors.danger.withAlpha(200),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.delete_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.delete_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  onDismissed: (_) async {
-                    await widget.onDelete(i);
-                    setState(() => _list.removeAt(i));
-                  },
-                  child: Material(
-                    color: isDark
-                        ? AppColors.elevatedDark
-                        : const Color(0xFFF9FAFB),
-                    borderRadius: BorderRadius.circular(12),
-                    child: InkWell(
+                    onDismissed: (_) async {
+                      await widget.onDelete(i);
+                      setState(() => _list.removeAt(i));
+                    },
+                    child: Material(
+                      color: isDark
+                          ? AppColors.elevatedDark
+                          : const Color(0xFFF9FAFB),
                       borderRadius: BorderRadius.circular(12),
-                      onTap: () {
-                        final entry = _list[i];
-                        Navigator.pop(context);
-                        widget.onRestore(entry);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isDark
-                                ? AppColors.borderDark
-                                : AppColors.borderLight,
+                      // 행 전체는 눌러도 아무 일도 없다. 재생성은 ↻ 버튼으로만 한다
+                      // (스크롤하다 실수로 창이 열리는 것을 막기 위해).
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isDark
+                                  ? AppColors.borderDark
+                                  : AppColors.borderLight,
+                            ),
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            ShaderMask(
-                              shaderCallback: (b) =>
-                                  AppColors.brandGradient.createShader(b),
-                              child: const Icon(
-                                Icons.push_pin_rounded,
-                                color: Colors.white,
-                                size: 15,
+                          child: MemoListRow(
+                            icon: Icons.push_pin_rounded,
+                            label: classLabel(_list[i]),
+                            labelKey: Key('history-label-${_list[i].id}'),
+                            memo: _list[i].memo,
+                            timeText: _list[i].time != 0
+                                ? formatEntryTime(_list[i].time)
+                                : null,
+                            textColor: textColor,
+                            subColor: subColor,
+                            actions: [
+                              OutlinedIconAction(
+                                key: Key('history-restore-${_list[i].id}'),
+                                icon: Icons.replay_rounded,
+                                tooltip: '다시 고정',
+                                color: AppColors.gradStart,
+                                isDark: isDark,
+                                onTap: restore,
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (classLabel(_list[i]) != null) ...[
-                                    Text(
-                                      classLabel(_list[i])!,
-                                      key: Key('history-label-${_list[i].id}'),
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.gradStart,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                  ],
-                                  Text(
-                                    _list[i].memo,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: textColor,
-                                      height: 1.45,
-                                    ),
-                                  ),
-                                  if (_list[i].time != 0) ...[
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      formatEntryTime(_list[i].time),
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: subColor.withAlpha(160),
-                                      ),
-                                    ),
-                                  ],
-                                ],
+                              OutlinedIconAction(
+                                key: Key('history-delete-${_list[i].id}'),
+                                icon: Icons.close_rounded,
+                                tooltip: '삭제',
+                                isDark: isDark,
+                                onTap: () async {
+                                  await widget.onDelete(i);
+                                  setState(() => _list.removeAt(i));
+                                },
                               ),
-                            ),
-                            Icon(
-                              Icons.replay_rounded,
-                              size: 14,
-                              color: subColor.withAlpha(120),
-                            ),
-                            const SizedBox(width: 2),
-                            IconButton(
-                              icon: Icon(
-                                Icons.close_rounded,
-                                size: 18,
-                                color: subColor,
-                              ),
-                              onPressed: () async {
-                                await widget.onDelete(i);
-                                setState(() => _list.removeAt(i));
-                              },
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                minWidth: 32,
-                                minHeight: 32,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           SizedBox(height: bottomPad + 20),
