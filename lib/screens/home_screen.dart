@@ -976,10 +976,17 @@ class _HomeScreenState extends State<HomeScreen>
             right: 0,
             top: footerRect.top,
             height: footerRect.height,
-            child: IgnorePointer(
-              child: Material(
-                type: MaterialType.transparency,
-                child: Center(child: HomeFooter(isDark: isDark)),
+            // 처음 열릴 때 본문과 같은 페이드·슬라이드로 나타나게 한다
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: SlideTransition(
+                position: _slideAnim,
+                child: IgnorePointer(
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Center(child: HomeFooter(isDark: isDark)),
+                  ),
+                ),
               ),
             ),
           ),
