@@ -5,7 +5,7 @@ import 'package:notimemo/theme/app_theme.dart';
 import 'package:notimemo/widgets/history_sheet.dart';
 import 'package:notimemo/widgets/home_widgets.dart';
 
-/// 팀원 사용 후기(PLAN.md 7번) 반영 테스트: 전체삭제 확인, 윤곽선·큰 버튼.
+/// 팀원 사용 후기 반영 테스트: 전체삭제 확인, 윤곽선·큰 버튼.
 List<MemoEntry> entries() => [
   const MemoEntry(id: 'a', memo: '수학 숙제', time: 1),
   const MemoEntry(id: 'b', memo: '우유 사기', time: 2),

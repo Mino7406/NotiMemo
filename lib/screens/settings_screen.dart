@@ -401,7 +401,8 @@ class _AppInfoCard extends StatelessWidget {
               textColor: textColor,
               subColor: subColor,
               trailing: Text(
-                '2026.06.08',
+                // 릴리스할 때마다 그 날짜로 고친다
+                '2026.10.03',
                 style: TextStyle(fontSize: 14, color: textColor),
               ),
             ),

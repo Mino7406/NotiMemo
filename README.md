@@ -102,9 +102,8 @@ NotiMemo/
 │  ├─ src/index.js              # 요청 처리: 크기·JSON 확인 → 횟수 제한 → AI 호출 → 결과 정리
 │  └─ src/classify.js           # 분류 기준·프롬프트·결과 검증
 ├─ test/                        # 자동 테스트(`flutter test`)
-├─ LICENSE                      # MIT 라이선스
 ├─ assets/                      # Caveat 손글씨 폰트(OFL), 런처 아이콘 원본(icon.png), README용 축소 아이콘(readme_icon.png)
-└─ PLAN.md                      # 개발 기록과 구조 메모
+└─ LICENSE                      # MIT 라이선스
 ```
 
 ---

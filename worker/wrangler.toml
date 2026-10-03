@@ -7,7 +7,7 @@ compatibility_date = "2026-09-01"
 binding = "AI"
 
 [vars]
-# 모델은 한국어 메모 샘플로 비교해 정한다 (PLAN.md 참고).
+# 모델은 한국어 메모 샘플로 비교해 정했다.
 MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 
 # 짧은 시간 폭주 방지용. 10초/60초 단위, 위치별 카운트라 정확한 집계는 아니다.

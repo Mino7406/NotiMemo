@@ -39,3 +39,6 @@ worker/.dev.vars
 apk_extract/
 *.log
 build_log.txt
+
+# 로컬 작업 메모(저장소에는 올리지 않는다)
+PLAN.md
