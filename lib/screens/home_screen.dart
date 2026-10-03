@@ -29,6 +29,14 @@ import '../widgets/photo_source_sheet.dart';
 import '../widgets/scheduled_sheet.dart';
 import '../widgets/schedule_sheet.dart';
 
+/// 아래 문구가 서서히 사라지는 구간(본문 아래 남은 빈 자리의 높이, 논리 픽셀).
+/// [_footerFadeStart] 이상이면 완전히 보이고 [_footerFadeEnd] 이하면 안 보인다.
+const double _footerFadeStart = 160;
+const double _footerFadeEnd = 70;
+
+/// 아래 문구 한 줄의 대략적인 높이(가운데 맞춤 계산용).
+const double _footerHeight = 48;
+
 // 메인 화면: 메모 입력, 알림 고정, 예약, AI 정리 등 대부분의 기능이 여기서 시작된다
 class HomeScreen extends StatefulWidget {
   final ThemeMode currentMode;
@@ -50,17 +58,11 @@ class _HomeScreenState extends State<HomeScreen>
   final _controller = TextEditingController();
   final _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  /// 아래 문구는 화면 뒤에 붙박이로 둔 "배경 글씨"다. 처음 빈 자리가 생겼을 때 그 가운데 높이를 한 번만
-  /// 재서 [_footerCenterY]에 두고, 그 뒤로는 글이 늘거나 줄어도, 키보드가 올라와도 움직이지 않는다.
-  /// 입력창 같은 내용이 문구를 가린다.
-  final _footerKey = GlobalKey();
-  final _bodyKey = GlobalKey();
   final _scrollCtrl = ScrollController();
-  double? _footerCenterY;
-  double _footerScreenHeight = 0;
 
-  /// 본문이 문구 자리 아래로 내려오지 않았을 때만 문구를 보여준다(내려오면 투명 버튼 뒤로 비쳐 보이므로 서서히 숨김)
-  bool _footerVisible = true;
+  /// 아래 문구가 본문 끝에서 떨어진 간격. 메모가 비어 있을 때의 빈 자리 가운데에 오도록 정하고, 그 뒤로는 그대로 둬서
+  /// 입력창이 늘어나면 문구도 같은 만큼 내려가게 한다.
+  double? _footerGap;
 
   // 알림 내역(저장된 메모 전체)
   List<MemoEntry> _memoList = [];
@@ -114,9 +116,6 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _controller.addListener(_dismissStaleUndo);
-    // 문구 높이는 처음 한 번만 정하면 되지만, 그 시점(시작 애니메이션 뒤, 빈 자리가 생긴 때)을 기다려야 해서
-    // 프레임마다 확인한다(정해진 뒤에는 바로 끝난다).
-    WidgetsBinding.instance.addPersistentFrameCallback((_) => _measureFooter());
     // 알림 권한 창이 사용 방법과 겹치지 않도록 사용 방법이 끝난 뒤에 요청한다.
     _load()
         .then((_) => _maybeShowTutorial())
@@ -807,261 +806,194 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  /// 문구는 움직이지 않는다. 할 일은 두 가지다.
-  /// 1) 높이를 한 번 정한다: 키보드가 내려가 있고 문구가 들어갈 만한 빈 자리가 있을 때 그 가운데를 잰다
-  ///    (화면 크기가 바뀌면 다시).
-  /// 2) 보일지 정한다: 본문 맨 아래가 문구 자리보다 위에 있을 때만 보이고, 본문이 길어져 문구 자리까지 내려오면
-  ///    서서히 숨는다(투명한 버튼 뒤로 글씨가 비쳐 보이지 않게).
-  void _measureFooter() {
-    if (!mounted) return;
-    final view = View.of(context);
-    final ro = _footerKey.currentContext?.findRenderObject();
-    final laidOut = ro is RenderBox && ro.attached && ro.hasSize;
-    var changed = false;
-
-    // 시작할 때 본문은 아래에서 올라오는 중이라 잰 위치에 그만큼이 섞인다. 그 이동량을 빼서 최종 자리를 구한다
-    // (이렇게 하면 애니메이션이 끝나길 기다리지 않고 처음부터 문구를 본문과 같이 나타낼 수 있다).
-    final bodyBox = _bodyKey.currentContext?.findRenderObject();
-    final slideShift = bodyBox is RenderBox && bodyBox.hasSize
-        ? _slideAnim.value.dy * bodyBox.size.height
-        : 0.0;
-
-    final needCenter =
-        _footerCenterY == null ||
-        _footerScreenHeight != view.physicalSize.height;
-    if (needCenter &&
-        laidOut &&
-        view.viewInsets.bottom == 0 &&
-        ro.size.height >= 64) {
-      _footerCenterY =
-          (ro.localToGlobal(Offset.zero) & ro.size).center.dy - slideShift;
-      _footerScreenHeight = view.physicalSize.height;
-      changed = true;
-    }
-
-    final cy = _footerCenterY;
-    if (cy != null && laidOut) {
-      // 본문 맨 아래(= 빈 자리의 위쪽 끝)가 문구 위쪽보다 위에 있어야 한다
-      final visible = ro.localToGlobal(Offset.zero).dy - slideShift <= cy - 32;
-      if (visible != _footerVisible) {
-        _footerVisible = visible;
-        changed = true;
-      }
-    }
-
-    // 프레임 처리 중에 setState를 하면 다음 프레임이 예약되지 않아서, 프레임이 끝난 뒤에 다시 그리게 한다
-    if (changed) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() {});
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : const Color(0xFF111827);
     final subColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
 
-    final footerY = _footerCenterY;
-
-    // 문구는 Scaffold 밖(Stack)에 그려서, 키보드로 본문이 줄어들어도 위치가 변하지 않게 한다
-    return Stack(
-      children: [
-        // 가장 뒤: 배경색 위에 문구를 그린다. 본문(Scaffold)이 투명이라 입력창 같은 내용이 문구를 가린다
-        ColoredBox(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          child: const SizedBox.expand(),
-        ),
-        if (footerY != null)
-          Positioned(
-            left: 0,
-            right: 0,
-            top: footerY - 32,
-            height: 64,
-            // 위치는 고정이고 보이고 숨는 것만 서서히 바뀐다
-            // 처음 열릴 때는 본문과 같은 페이드(_fadeAnim)와 슬라이드(아래에서 올라옴)로 함께 나타난다.
-            // 본문의 슬라이드는 본문 높이 기준이라, 같은 이동량을 본문 높이로 계산해서 맞춘다.
-            child: AnimatedBuilder(
-              animation: _slideAnim,
-              builder: (_, child) {
-                final box = _bodyKey.currentContext?.findRenderObject();
-                final bodyHeight = box is RenderBox && box.hasSize
-                    ? box.size.height
-                    : 0.0;
-                return Transform.translate(
-                  offset: Offset(0, _slideAnim.value.dy * bodyHeight),
-                  child: child,
-                );
-              },
-              child: FadeTransition(
-                opacity: _fadeAnim,
-                child: AnimatedOpacity(
-                  opacity: _footerVisible ? 1 : 0,
-                  duration: const Duration(milliseconds: 300),
-                  child: IgnorePointer(
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: Center(child: HomeFooter(isDark: isDark)),
-                    ),
-                  ),
-                ),
+    return Scaffold(
+      key: _scaffoldKey,
+      endDrawer: AppMenuDrawer(
+        scheduledCount: _scheduled.length,
+        historyCount: _memoList.length,
+        isBusy: _isAnalyzing || _isReadingPhoto,
+        onAnalyze: _analyze,
+        onPhoto: _readPhoto,
+        onSchedule: _scheduleNotification,
+        onScheduledList: _openScheduled,
+        onHistory: _showHistory,
+        onSettings: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SettingsScreen(
+                currentMode: widget.currentMode,
+                onThemeChanged: widget.onThemeChanged,
               ),
             ),
-          ),
-        Scaffold(
-          backgroundColor: Colors.transparent,
-          key: _scaffoldKey,
-          endDrawer: AppMenuDrawer(
-            scheduledCount: _scheduled.length,
-            historyCount: _memoList.length,
-            isBusy: _isAnalyzing || _isReadingPhoto,
-            onAnalyze: _analyze,
-            onPhoto: _readPhoto,
-            onSchedule: _scheduleNotification,
-            onScheduledList: _openScheduled,
-            onHistory: _showHistory,
-            onSettings: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => SettingsScreen(
-                    currentMode: widget.currentMode,
-                    onThemeChanged: widget.onThemeChanged,
-                  ),
-                ),
-              );
-              await _refreshClassify();
-            },
-            onTutorial: _startTutorial,
-          ),
-          body: SafeArea(
-            child: FadeTransition(
-              opacity: _fadeAnim,
-              child: SlideTransition(
-                position: _slideAnim,
-                child: Column(
-                  key: _bodyKey,
-                  children: [
-                    TopBar(subColor: subColor, textColor: textColor),
-                    Expanded(
-                      // 내용이 화면보다 짧으면 남는 아래쪽 빈 자리를 문구 영역으로 쓴다
-                      // 본문은 내용 높이 그대로 두고(길어지면 스크롤), 그 아래에 남는 자리만 따로 채운다
-                      child: CustomScrollView(
-                        controller: _scrollCtrl,
-                        slivers: [
-                          SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-                            sliver: SliverToBoxAdapter(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  HeroText(
-                                    textColor: textColor,
-                                    subColor: subColor,
-                                  ),
-                                  const SizedBox(height: 24),
-                                  AnimatedSize(
-                                    duration: const Duration(milliseconds: 250),
-                                    curve: Curves.easeInOut,
-                                    child: _hasActiveNotification
-                                        ? Column(
-                                            children: [
-                                              ActiveBanner(
-                                                isDark: isDark,
-                                                count: _pinnedIds.length,
-                                              ),
-                                              const SizedBox(height: 10),
-                                            ],
-                                          )
-                                        : const SizedBox.shrink(),
-                                  ),
-                                  InputCard(
-                                    key: const Key('input-card'),
-                                    controller: _controller,
-                                    focusNode: _inputFocus,
-                                    onAnalyze: _analyze,
-                                    isAnalyzing: _isAnalyzing,
-                                    showAiHint: _aiHint,
-                                    onSchedule: _scheduleNotification,
-                                    isDark: isDark,
-                                    textColor: textColor,
-                                    subColor: subColor,
-                                    onClear: _confirmClearMemo,
-                                  ),
-                                  if (_isAnalyzing || _isReadingPhoto)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 10),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(4),
-                                        child: const LinearProgressIndicator(
-                                          key: Key('busy-indicator'),
-                                          minHeight: 3,
-                                          color: AppColors.gradStart,
-                                        ),
-                                      ),
-                                    ),
-                                  // 적용해 둔 자동 정리 결과(메모를 고치면 사라진다)
-                                  ValueListenableBuilder<TextEditingValue>(
-                                    valueListenable: _controller,
-                                    builder: (_, value, _) {
-                                      final a = _analysis;
-                                      if (a == null ||
-                                          _analyzedMemo != value.text.trim()) {
-                                        return const SizedBox.shrink();
-                                      }
-                                      return Padding(
-                                        padding: const EdgeInsets.only(top: 10),
-                                        child: AppliedAnalysisChips(
-                                          category: a.category,
-                                          priorityLabel: priorityLabel(
-                                            a.priority,
+          );
+          await _refreshClassify();
+        },
+        onTutorial: _startTutorial,
+      ),
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeAnim,
+          child: SlideTransition(
+            position: _slideAnim,
+            child: Column(
+              children: [
+                TopBar(subColor: subColor, textColor: textColor),
+                Expanded(
+                  // 내용이 화면보다 짧으면 남는 아래쪽 빈 자리를 문구 영역으로 쓴다
+                  // 본문은 내용 높이 그대로 두고(길어지면 스크롤), 그 아래에 남는 자리만 따로 채운다
+                  child: CustomScrollView(
+                    controller: _scrollCtrl,
+                    slivers: [
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                        sliver: SliverToBoxAdapter(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              HeroText(
+                                textColor: textColor,
+                                subColor: subColor,
+                              ),
+                              const SizedBox(height: 24),
+                              AnimatedSize(
+                                duration: const Duration(milliseconds: 250),
+                                curve: Curves.easeInOut,
+                                child: _hasActiveNotification
+                                    ? Column(
+                                        children: [
+                                          ActiveBanner(
+                                            isDark: isDark,
+                                            count: _pinnedIds.length,
                                           ),
-                                          isAi: a.source == AnalysisSource.ai,
-                                          isDark: isDark,
-                                          subColor: subColor,
-                                          onRemove: () =>
-                                              setState(_clearAnalysis),
-                                        ),
-                                      );
-                                    },
+                                          const SizedBox(height: 10),
+                                        ],
+                                      )
+                                    : const SizedBox.shrink(),
+                              ),
+                              InputCard(
+                                key: const Key('input-card'),
+                                controller: _controller,
+                                focusNode: _inputFocus,
+                                onAnalyze: _analyze,
+                                isAnalyzing: _isAnalyzing,
+                                showAiHint: _aiHint,
+                                onSchedule: _scheduleNotification,
+                                isDark: isDark,
+                                textColor: textColor,
+                                subColor: subColor,
+                                onClear: _confirmClearMemo,
+                              ),
+                              if (_isAnalyzing || _isReadingPhoto)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 10),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: const LinearProgressIndicator(
+                                      key: Key('busy-indicator'),
+                                      minHeight: 3,
+                                      color: AppColors.gradStart,
+                                    ),
                                   ),
-                                  const SizedBox(height: 14),
-                                  PinButton(
-                                    key: const Key('pin-button'),
-                                    isPinning: _isPinning,
-                                    onTap: _createNotification,
+                                ),
+                              // 적용해 둔 자동 정리 결과(메모를 고치면 사라진다)
+                              ValueListenableBuilder<TextEditingValue>(
+                                valueListenable: _controller,
+                                builder: (_, value, _) {
+                                  final a = _analysis;
+                                  if (a == null ||
+                                      _analyzedMemo != value.text.trim()) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 10),
+                                    child: AppliedAnalysisChips(
+                                      category: a.category,
+                                      priorityLabel: priorityLabel(a.priority),
+                                      isAi: a.source == AnalysisSource.ai,
+                                      isDark: isDark,
+                                      subColor: subColor,
+                                      onRemove: () => setState(_clearAnalysis),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 14),
+                              PinButton(
+                                key: const Key('pin-button'),
+                                isPinning: _isPinning,
+                                onTap: _createNotification,
+                              ),
+                              const SizedBox(height: 10),
+                              CancelButton(
+                                isDark: isDark,
+                                isActive: _hasActiveNotification,
+                                label: _pinnedIds.length > 1
+                                    ? '모두 지우기'
+                                    : '알림 지우기',
+                                onTap: _cancelNotification,
+                              ),
+                              // 맨 아래 여백(글이 길어져 스크롤해도 버튼이 화면 끝에 붙지 않게)
+                              const SizedBox(height: 20),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // 아래 문구. 본문 바로 아래에 붙어서 입력창이 늘어나면 같이 밀려 내려가고, 밀려 내려가
+                      // 화면 밑에 닿아 스크롤이 필요해질 즈음엔 서서히 사라진다(키보드가 올라와 화면이 줄어도 같다).
+                      // 문구가 스크롤 길이를 늘리지 않도록 자리를 차지하지 않는 방식(OverflowBox)으로 그린다.
+                      SliverLayoutBuilder(
+                        builder: (context, c) {
+                          // 본문 아래에 남은 빈 자리의 높이
+                          final room =
+                              c.viewportMainAxisExtent -
+                              c.precedingScrollExtent;
+                          // 메모가 비어 있고 키보드가 내려가 있을 때(= 처음 모습)의 빈 자리 가운데로 간격을 정한다
+                          if (_controller.text.isEmpty &&
+                              View.of(context).viewInsets.bottom == 0) {
+                            _footerGap = ((room - _footerHeight) / 2).clamp(
+                              8.0,
+                              400.0,
+                            );
+                          }
+                          return SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: SizedBox.expand(
+                              child: Opacity(
+                                opacity:
+                                    ((room - _footerFadeEnd) /
+                                            (_footerFadeStart - _footerFadeEnd))
+                                        .clamp(0.0, 1.0),
+                                child: OverflowBox(
+                                  alignment: Alignment.topCenter,
+                                  minHeight: 0,
+                                  maxHeight: double.infinity,
+                                  child: Padding(
+                                    padding: EdgeInsets.only(
+                                      top: _footerGap ?? 24,
+                                    ),
+                                    child: HomeFooter(isDark: isDark),
                                   ),
-                                  const SizedBox(height: 10),
-                                  CancelButton(
-                                    isDark: isDark,
-                                    isActive: _hasActiveNotification,
-                                    label: _pinnedIds.length > 1
-                                        ? '모두 지우기'
-                                        : '알림 지우기',
-                                    onTap: _cancelNotification,
-                                  ),
-                                  // 맨 아래 여백(글이 길어져 스크롤해도 버튼이 화면 끝에 붙지 않게)
-                                  const SizedBox(height: 20),
-                                ],
+                                ),
                               ),
                             ),
-                          ),
-                          // 입력창·버튼 아래 남는 빈 자리(없으면 높이 0). 문구 높이를 정하려고 위치만 잰다
-                          SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: SizedBox.expand(key: _footerKey),
-                          ),
-                        ],
+                          );
+                        },
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 }

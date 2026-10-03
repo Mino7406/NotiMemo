@@ -107,19 +107,59 @@ void main() {
       expect(r.last.bottom, lessThan(card.bottom - 12));
     });
 
-    testWidgets('✕는 ✨·🕒와 28px 떼어 두고, ✨·🕒 사이는 8px다', (tester) async {
+    testWidgets('위아래가 대칭이다: ✕가 위 테두리에서 떨어진 만큼 🕒가 아래 테두리에서 떨어진다', (
+      tester,
+    ) async {
+      // 카드가 화면 높이로 늘어나지 않고 최소 크기(6줄)인 상태로 그린다.
+      await tester.binding.setSurfaceSize(const Size(420, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final c = TextEditingController(text: '메모');
+      addTearDown(c.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: InputCard(
+                  controller: c,
+                  isDark: false,
+                  textColor: Colors.black,
+                  subColor: Colors.grey,
+                  onClear: () {},
+                  onAnalyze: () {},
+                  onSchedule: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final card = tester.getRect(find.byType(InputCard));
+      final top = rectOf(tester, clearKey).top - card.top;
+      final bottom = card.bottom - rectOf(tester, scheduleKey).bottom;
+      expect(bottom, closeTo(top, 1.5));
+      // 글이 길어져 카드가 늘어나도 대칭은 그대로다.
+      c.text = List.generate(25, (i) => '줄 ${i + 1}').join('\n');
+      await tester.pumpAndSettle();
+      final grown = tester.getRect(find.byType(InputCard));
+      expect(
+        grown.bottom - rectOf(tester, scheduleKey).bottom,
+        closeTo(rectOf(tester, clearKey).top - grown.top, 1.5),
+      );
+    });
+
+    testWidgets('✕는 위쪽에, ✨·🕒는 아래쪽에 있고 ✨·🕒 사이는 8px다', (tester) async {
       await openCard(tester, text: '메모');
       final r = [
         for (final k in [clearKey, analyzeKey, scheduleKey]) rectOf(tester, k),
       ];
       final separation = r[1].top - r[0].bottom; // ✕ ↔ ✨
       final together = r[2].top - r[1].bottom; // ✨ ↔ 🕒
-      expect(separation, closeTo(28, 0.6));
       expect(together, closeTo(8, 0.6));
       // 분리: ✕ 아래 간격이 ✨·🕒 사이 간격의 3배 넘게 크다.
       expect(separation, greaterThan(together * 3));
-      // 그래도 흩어져 보이지 않는다(카드 높이에 펴 놓던 때 약 46px보다 좁다).
-      expect(separation, lessThan(46));
     });
 
     testWidgets('✨·🕒는 서로 붙어 한 덩어리로 보인다', (tester) async {
@@ -161,20 +201,23 @@ void main() {
       expect(rectOf(tester, clearKey).top - card.top, closeTo(13, 1));
     });
 
-    testWidgets('버튼이 둘일 때도 ✕ 바로 아래는 28px 떼어 둔다', (tester) async {
+    testWidgets('버튼이 둘일 때 ✕는 위, ✨는 아래 테두리에서 같은 거리에 있다', (tester) async {
       await openCard(tester, text: '메모', schedule: false);
       final card = tester.getRect(find.byType(InputCard));
       final first = rectOf(tester, clearKey);
       final second = rectOf(tester, analyzeKey);
       expect(first.top - card.top, closeTo(13, 1));
-      expect(second.top - first.bottom, closeTo(28, 0.6));
+      expect(card.bottom - second.bottom, closeTo(13, 1)); // 위(13)와 같다
+      expect(second.top - first.bottom, greaterThan(24)); // ✕와 떨어져 있다
     });
 
-    testWidgets('✨ 없이 🕒만 있어도 ✕ 아래는 28px 떼어 둔다', (tester) async {
+    testWidgets('✨ 없이 🕒만 있어도 ✕와 떨어져 아래쪽에 있다', (tester) async {
       await openCard(tester, text: '메모', analyze: false);
       final first = rectOf(tester, clearKey);
       final second = rectOf(tester, scheduleKey);
-      expect(second.top - first.bottom, closeTo(28, 0.6));
+      final card = tester.getRect(find.byType(InputCard));
+      expect(card.bottom - second.bottom, closeTo(13, 1));
+      expect(second.top - first.bottom, greaterThan(24));
     });
   });
 

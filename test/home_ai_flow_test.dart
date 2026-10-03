@@ -838,35 +838,59 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    homeTest('글이 늘었다 줄어도 아래 문구는 같은 자리에 있다', (tester) async {
-      await openHome(tester);
-      // 시작 애니메이션(0.9초)이 끝나야 문구 높이가 정해진다
-      await tester.pump(const Duration(seconds: 1));
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.pump(const Duration(milliseconds: 700));
+    // 아래 문구: 본문 바로 아래에 붙어 입력창이 늘어나면 같이 내려가고, 스크롤이 필요해질 즈음 사라진다.
+    // 자리가 전혀 없으면 문구 자체가 그려지지 않으므로 그때도 0(안 보임)으로 본다.
+    double footerOpacity(WidgetTester tester) {
       final footer = find.byKey(const Key('home-footer'));
-      expect(footer, findsOneWidget);
-      final before = tester.getCenter(footer);
-      await typeMemo(
-        tester,
-        List.generate(40, (i) => '긴 메모 ${i + 1}').join('\n'),
-      );
-      await tester.pumpAndSettle(const Duration(milliseconds: 300));
-      expect(tester.getCenter(footer), before); // 늘어나도 따라 움직이지 않는다
-      // 본문이 문구 자리까지 내려오면 투명 버튼 뒤로 비치지 않게 숨는다
-      double opacity() => tester
-          .widget<AnimatedOpacity>(
-            find.ancestor(of: footer, matching: find.byType(AnimatedOpacity)),
+      if (footer.evaluate().isEmpty) return 0;
+      return tester
+          .widget<Opacity>(
+            find.ancestor(of: footer, matching: find.byType(Opacity)).first,
           )
           .opacity;
-      expect(opacity(), 0);
+    }
+
+    homeTest('아래 문구는 입력창이 늘어나면 같이 내려가고, 스크롤이 필요하면 사라진다', (tester) async {
+      await openHome(tester);
+      await tester.pump(const Duration(seconds: 1));
+      final footer = find.byKey(const Key('home-footer'));
+      expect(footer, findsOneWidget);
+      expect(footerOpacity(tester), 1);
+      final start = tester.getCenter(footer).dy;
+      final cardStart = tester.getSize(find.byType(InputCard)).height;
+
+      // 입력창이 3줄 늘어나면(6줄 → 9줄) 문구도 그만큼 내려간다
+      await typeMemo(tester, List.generate(9, (i) => '줄 ${i + 1}').join('\n'));
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+      final grown = tester.getSize(find.byType(InputCard)).height - cardStart;
+      expect(grown, greaterThan(40));
+      expect(tester.getCenter(footer).dy - start, closeTo(grown, 2));
+
+      // 아주 길어져 스크롤이 필요하면 문구는 사라진다
+      await typeMemo(tester, List.generate(40, (i) => '줄 ${i + 1}').join('\n'));
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+      expect(footerOpacity(tester), 0);
+
+      // 다시 지우면 처음 자리에서 다시 나타난다
       await typeMemo(tester, '');
       await tester.pumpAndSettle(const Duration(milliseconds: 300));
-      expect(tester.getCenter(footer), before);
-      expect(opacity(), 1); // 줄어들면 같은 자리에서 다시 보인다
+      expect(footerOpacity(tester), 1);
+      expect(tester.getCenter(footer).dy, closeTo(start, 1));
     });
 
-    homeTest('앱을 처음 열 때 문구가 본문과 함께 나타난다(한참 뒤에 뿅 나타나지 않는다)', (tester) async {
+    homeTest('처음에는 아래 문구가 빈 자리의 가운데에 있다', (tester) async {
+      await openHome(tester);
+      await tester.pump(const Duration(seconds: 1));
+      final blankTop =
+          tester.getRect(find.byType(CancelButton)).bottom + 20; // 버튼 아래 여백(20)
+      final blankBottom = tester.getSize(find.byType(Scaffold)).height;
+      // 문구 한 줄(약 48px)의 위쪽 끝이 빈 자리 가운데에서 24px 위에 온다.
+      // (시험 환경의 글꼴은 글자가 넓어 두 줄이 되므로 가운데가 아니라 위쪽 끝으로 비교한다)
+      final top = tester.getTopLeft(find.byKey(const Key('home-footer'))).dy;
+      expect(top, closeTo((blankTop + blankBottom) / 2 - 24, 8));
+    });
+
+    homeTest('아래 문구는 시작할 때 본문과 함께 올라오며 나타난다', (tester) async {
       await tester.binding.setSurfaceSize(const Size(420, 1000));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(
@@ -877,20 +901,16 @@ void main() {
           ),
         ),
       );
-      // 시작 애니메이션(0.9초)이 한창인 0.3초 시점
-      for (var i = 0; i < 3; i++) {
-        await tester.pump(const Duration(milliseconds: 100));
-      }
-      expect(find.byKey(const Key('home-footer')), findsOneWidget);
-      // 본문처럼 아래에서 올라오는 중이다(끝난 자리보다 아래에 있다가 올라와서 멈춘다)
-      final early = tester.getCenter(find.byKey(const Key('home-footer')));
-      final bodyEarly = tester.getTopLeft(find.byType(InputCard)).dy;
+      await tester.pump(const Duration(milliseconds: 200));
+      final footer = find.byKey(const Key('home-footer'));
+      expect(footer, findsOneWidget); // 처음부터 있다(뒤늦게 뿅 나타나지 않는다)
+      final early = tester.getCenter(footer).dy;
+      final cardEarly = tester.getTopLeft(find.byType(InputCard)).dy;
       await tester.pump(const Duration(seconds: 2));
-      final settled = tester.getCenter(find.byKey(const Key('home-footer')));
-      final bodySettled = tester.getTopLeft(find.byType(InputCard)).dy;
-      expect(early.dy, greaterThan(settled.dy + 2));
-      // 올라온 양이 본문(입력창)이 올라온 양과 같다
-      expect(early.dy - settled.dy, closeTo(bodyEarly - bodySettled, 1.5));
+      final settled = tester.getCenter(footer).dy;
+      final cardSettled = tester.getTopLeft(find.byType(InputCard)).dy;
+      // 본문(입력창)과 같은 거리를 같이 올라온다
+      expect(early - settled, closeTo(cardEarly - cardSettled, 1.5));
     });
 
     homeTest('공백만 있을 때도 ✕를 누르면 바로 비워진다', (tester) async {

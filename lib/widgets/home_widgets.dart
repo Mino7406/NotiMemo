@@ -325,6 +325,70 @@ class _InputCardState extends State<InputCard>
     super.dispose();
   }
 
+  /// 오른쪽 버튼 정보: ✕(삭제), ✨(AI 자동 정리), 🕒(예약). ✨·🕒는 해당 기능이 있을 때만 들어간다.
+  List<_ChipSpec> _chipSpecs() => [
+    _ChipSpec(
+      key: const Key('clear-memo'),
+      icon: Icons.close_rounded,
+      color: AppColors.danger,
+      tooltip: '새 메모 지우기',
+      onTap: widget.onClear,
+    ),
+    if (widget.onAnalyze != null)
+      _ChipSpec(
+        key: const Key('card-analyze'),
+        icon: Icons.auto_awesome_outlined,
+        color: AppColors.gradStart,
+        tooltip: 'AI 자동 정리',
+        loading: widget.isAnalyzing,
+        pulse: widget.showAiHint ? _pulse : null,
+        onTap: widget.isAnalyzing ? () {} : widget.onAnalyze!,
+      ),
+    if (widget.onSchedule != null)
+      _ChipSpec(
+        key: const Key('card-schedule'),
+        icon: Icons.schedule_rounded,
+        color: AppColors.gradStart,
+        tooltip: '예약 생성',
+        onTap: widget.onSchedule!,
+      ),
+  ];
+
+  /// [specs]의 [from]번째부터 [to]번째 앞까지(없으면 끝까지)를 세로로 쌓는다. 메모에 글이 있을 때만 보인다.
+  Widget _chipColumn({
+    required List<_ChipSpec> specs,
+    required int from,
+    int? to,
+  }) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: widget.controller,
+      builder: (_, value, _) {
+        final has = value.text.isNotEmpty;
+        final end = to ?? specs.length;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = from; i < end; i++) ...[
+              if (i > from) const SizedBox(height: _cardChipGap),
+              _PopChip(
+                key: specs[i].key,
+                visible: has,
+                order: i,
+                count: specs.length,
+                icon: specs[i].icon,
+                color: specs[i].color,
+                tooltip: specs[i].tooltip,
+                loading: specs[i].loading,
+                pulse: specs[i].pulse,
+                onTap: specs[i].onTap,
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
@@ -431,10 +495,14 @@ class _InputCardState extends State<InputCard>
               const SizedBox(height: 14),
             ],
           ),
-          // ✨(두 번째 버튼)의 가운데 높이, 그 왼쪽에 놓는다. 메모가 비면 숨는다.
+          // ✨의 가운데 높이, 그 왼쪽에 놓는다(✨는 🕒 바로 위라서 🕒가 있으면 그만큼 올려 잡는다). 메모가 비면 숨는다.
           if (widget.showAiHint && widget.onAnalyze != null)
             Positioned(
-              top: _cardChipInset + _chipTop(1) + _cardChipSize / 2 - 17,
+              bottom:
+                  _cardChipInset +
+                  (widget.onSchedule != null
+                      ? _cardChipSize + _cardChipGap
+                      : 0),
               right: _cardChipInset + _cardChipSize + 4,
               child: ValueListenableBuilder<TextEditingValue>(
                 valueListenable: widget.controller,
@@ -446,69 +514,21 @@ class _InputCardState extends State<InputCard>
                       ),
               ),
             ),
+          // ✕는 카드 위쪽에, ✨·🕒는 카드 아래쪽에 붙여서 카드 높이가 어떻든 위아래 여백이 같다(대칭).
+          // 삭제(✕)를 ✨·🕒와 떼어 두어 ✨·🕒를 누르려다 ✕를 잘못 누르지 않게 하는 효과도 있다.
           Positioned(
-            // 위쪽 모서리에서 고정 간격으로 쌓는다.
             top: _cardChipInset,
             right: _cardChipInset,
             width: _cardChipSize,
-            child: ValueListenableBuilder<TextEditingValue>(
-              valueListenable: widget.controller,
-              builder: (_, value, _) {
-                final has = value.text.isNotEmpty;
-                final specs = <_ChipSpec>[
-                  _ChipSpec(
-                    key: const Key('clear-memo'),
-                    icon: Icons.close_rounded,
-                    color: AppColors.danger,
-                    tooltip: '새 메모 지우기',
-                    onTap: widget.onClear,
-                  ),
-                  if (widget.onAnalyze != null)
-                    _ChipSpec(
-                      key: const Key('card-analyze'),
-                      icon: Icons.auto_awesome_outlined,
-                      color: AppColors.gradStart,
-                      tooltip: 'AI 자동 정리',
-                      loading: widget.isAnalyzing,
-                      pulse: widget.showAiHint ? _pulse : null,
-                      onTap: widget.isAnalyzing ? () {} : widget.onAnalyze!,
-                    ),
-                  if (widget.onSchedule != null)
-                    _ChipSpec(
-                      key: const Key('card-schedule'),
-                      icon: Icons.schedule_rounded,
-                      color: AppColors.gradStart,
-                      tooltip: '예약 생성',
-                      onTap: widget.onSchedule!,
-                    ),
-                ];
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (var i = 0; i < specs.length; i++) ...[
-                      if (i > 0)
-                        SizedBox(
-                          // ✕(삭제) 바로 아래만 넓게 벌려서 ✨·🕒를 누르려다 ✕를 잘못 누르지 않게 한다.
-                          height: i == 1 ? _cardChipSeparation : _cardChipGap,
-                        ),
-                      _PopChip(
-                        key: specs[i].key,
-                        visible: has,
-                        order: i,
-                        count: specs.length,
-                        icon: specs[i].icon,
-                        color: specs[i].color,
-                        tooltip: specs[i].tooltip,
-                        loading: specs[i].loading,
-                        pulse: specs[i].pulse,
-                        onTap: specs[i].onTap,
-                      ),
-                    ],
-                  ],
-                );
-              },
-            ),
+            child: _chipColumn(specs: _chipSpecs(), from: 0, to: 1),
           ),
+          if (widget.onAnalyze != null || widget.onSchedule != null)
+            Positioned(
+              bottom: _cardChipInset,
+              right: _cardChipInset,
+              width: _cardChipSize,
+              child: _chipColumn(specs: _chipSpecs(), from: 1, to: null),
+            ),
         ],
       ),
     );
@@ -531,15 +551,6 @@ const Offset _slideInFrom = Offset(1.6, 0);
 
 /// 같은 성격의 버튼(✨·🕒) 사이 세로 간격.
 const double _cardChipGap = 8;
-
-/// 삭제(✕)와 그 아래 기능 버튼(✨·🕒) 사이 간격. 삭제 버튼을 따로 떼어 두려고 더 넓게 둔다.
-const double _cardChipSeparation = 28;
-
-/// i번째 버튼의 위쪽 끝이 첫 버튼(✕)의 위쪽 끝에서 떨어진 거리.
-double _chipTop(int i) => i == 0
-    ? 0
-    : (_cardChipSize + _cardChipSeparation) +
-          (i - 1) * (_cardChipSize + _cardChipGap);
 
 /// [_PopChip]에 넘기는 버튼 정보.
 class _ChipSpec {
