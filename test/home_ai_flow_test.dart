@@ -817,7 +817,7 @@ void main() {
       );
     });
 
-    homeTest('아주 긴 글이어도 맨 아래까지 스크롤하면 알림 지우기 버튼이 화면 끝에 붙지 않고 아래 여백이 남는다', (
+    homeTest('아주 긴 글이어도 맨 아래까지 스크롤하면 알림 지우기 아래 여백이 20 정도로 일정하다(문구로 벌어지지 않는다)', (
       tester,
     ) async {
       await openHome(tester);
@@ -834,7 +834,8 @@ void main() {
       await tester.pumpAndSettle();
       final screenHeight = tester.getSize(find.byType(Scaffold)).height;
       final cancel = tester.getRect(find.byType(CancelButton));
-      expect(cancel.bottom, lessThanOrEqualTo(screenHeight - 15));
+      // 맨 아래 여백은 딱 20 정도다(문구 때문에 더 벌어지지 않는다).
+      expect(screenHeight - cancel.bottom, closeTo(20, 3));
       expect(tester.takeException(), isNull);
     });
 
@@ -876,6 +877,58 @@ void main() {
       await tester.pumpAndSettle(const Duration(milliseconds: 300));
       expect(footerOpacity(tester), 1);
       expect(tester.getCenter(footer).dy, closeTo(start, 1));
+    });
+
+    homeTest('문구는 자기 아랫면이 화면 끝에 닿을 즈음에 맞춰 서서히 사라진다', (tester) async {
+      await openHome(tester);
+      await tester.pump(const Duration(seconds: 1));
+      final ops = <double>[];
+      // 6줄에서 시작해 줄을 하나씩 늘려 가며 투명도를 본다.
+      for (var n = 6; n <= 24; n++) {
+        await typeMemo(
+          tester,
+          List.generate(n, (i) => '줄 ${i + 1}').join('\n'),
+        );
+        await tester.pumpAndSettle(const Duration(milliseconds: 300));
+        ops.add(footerOpacity(tester));
+      }
+      expect(ops.first, 1);
+      expect(ops.last, 0);
+      // 늘어날수록 옅어지기만 한다(다시 진해지지 않는다).
+      for (var i = 1; i < ops.length; i++) {
+        expect(ops[i], lessThanOrEqualTo(ops[i - 1] + 0.001));
+      }
+      // 처음에는 위치가 가운데라 한동안 선명하고, 끝까지 갑자기 사라지지 않고 중간 단계를 거친다.
+      expect(ops.where((o) => o == 1).length, greaterThanOrEqualTo(3));
+      expect(
+        ops.where((o) => o > 0.05 && o < 0.95).length,
+        greaterThanOrEqualTo(2),
+      );
+      // 완전히 사라진 때는 문구가 화면 끝에 닿아서다: 바로 앞 단계의 문구 아랫면은 화면 안(끝 근처)에 있었다.
+    });
+
+    homeTest('큰 제목과 설명 문구는 스크롤해도 고정이고, 입력창부터 위로 스크롤된다', (tester) async {
+      await openHome(tester);
+      await tester.pump(const Duration(seconds: 1));
+      final title = find.textContaining('지금 기억해야 할 것은');
+      final subtitle = find.textContaining('메모를 알림창에 고정해');
+      final titleBefore = tester.getTopLeft(title).dy;
+      final subBefore = tester.getTopLeft(subtitle).dy;
+      final cardBefore = tester.getTopLeft(find.byType(InputCard)).dy;
+      await typeMemo(tester, List.generate(40, (i) => '줄 ${i + 1}').join('\n'));
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+      final scroll = tester.state<ScrollableState>(
+        find.byType(Scrollable).first,
+      );
+      scroll.position.jumpTo(scroll.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(title).dy, titleBefore); // 제목은 그대로
+      expect(tester.getTopLeft(subtitle).dy, subBefore); // 설명 문구도 그대로
+      // 입력창부터는 위로 스크롤된다
+      expect(
+        tester.getTopLeft(find.byType(InputCard)).dy,
+        lessThan(cardBefore),
+      );
     });
 
     homeTest('처음에는 아래 문구가 빈 자리의 가운데에 있다', (tester) async {

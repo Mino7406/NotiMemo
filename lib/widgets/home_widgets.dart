@@ -211,33 +211,36 @@ class HomeFooter extends StatelessWidget {
   }
 }
 
-// 화면 위쪽의 큰 제목과 설명 문구
-class HeroText extends StatelessWidget {
+// 화면 위쪽의 큰 제목. 설명 문구와 함께 스크롤하지 않고 상단바 아래에 고정해 둔다
+class HeroTitle extends StatelessWidget {
   final Color textColor;
-  final Color subColor;
-  const HeroText({super.key, required this.textColor, required this.subColor});
+  const HeroTitle({super.key, required this.textColor});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '지금 기억해야 할 것은 \n무엇인가요?',
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
-            color: textColor,
-            letterSpacing: -0.5,
-            height: 1.35,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          '메모를 알림창에 고정해 언제든지 확인하세요.',
-          style: TextStyle(fontSize: 14, color: subColor, height: 1.5),
-        ),
-      ],
+    return Text(
+      '지금 기억해야 할 것은 \n무엇인가요?',
+      style: TextStyle(
+        fontSize: 26,
+        fontWeight: FontWeight.w700,
+        color: textColor,
+        letterSpacing: -0.5,
+        height: 1.35,
+      ),
+    );
+  }
+}
+
+// 제목 아래 설명 문구. 이 문구까지 고정이고, 그 아래 입력창부터가 스크롤 범위다
+class HeroSubtitle extends StatelessWidget {
+  final Color subColor;
+  const HeroSubtitle({super.key, required this.subColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      '메모를 알림창에 고정해 언제든지 확인하세요.',
+      style: TextStyle(fontSize: 14, color: subColor, height: 1.5),
     );
   }
 }
