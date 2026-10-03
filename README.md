@@ -11,6 +11,7 @@
 [![Flutter](https://img.shields.io/badge/Flutter-Dart-02569B?style=flat-square&logo=flutter&logoColor=white)](https://flutter.dev/)
 [![Kotlin](https://img.shields.io/badge/Kotlin-native-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 [![AI server](https://img.shields.io/badge/AI-Cloudflare%20Workers-F38020?style=flat-square&logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers-ai/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-4c1?style=flat-square)](LICENSE)
 ![language](https://img.shields.io/badge/docs-한국어-blue?style=flat-square)
 
 </div>
@@ -101,6 +102,7 @@ NotiMemo/
 │  ├─ src/index.js              # 요청 처리: 크기·JSON 확인 → 횟수 제한 → AI 호출 → 결과 정리
 │  └─ src/classify.js           # 분류 기준·프롬프트·결과 검증
 ├─ test/                        # 자동 테스트(`flutter test`)
+├─ LICENSE                      # MIT 라이선스
 ├─ assets/                      # Caveat 손글씨 폰트(OFL), 런처 아이콘 원본(icon.png), README용 축소 아이콘(readme_icon.png)
 └─ PLAN.md                      # 개발 기록과 구조 메모
 ```
@@ -429,6 +431,12 @@ npx wrangler deploy
 
 - 사진은 시스템 카메라/갤러리 선택 화면을 쓰므로 별도 카메라 권한을 요청하지 않습니다.
 - AI 서버에 보내는 것은 **동의한 사용자의 메모 본문과 설치별 무작위 id뿐**입니다. 동의하지 않았거나 "자동 분류"를 끈 경우 서버로 보내지 않습니다.
+
+---
+
+## 라이선스
+
+[MIT](LICENSE)입니다. 앱에 포함된 손글씨 폰트 Caveat는 [SIL Open Font License](assets/OFL-Caveat.txt)를 따릅니다.
 
 ---
 
