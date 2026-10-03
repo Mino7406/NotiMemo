@@ -5,8 +5,7 @@
   알림메모 (NotiMemo)
 </h1>
 
-메모를 알림창에 고정해 두고, 앱을 열지 않아도 확인하고 고치는 안드로이드 메모 앱입니다. 
-예약 알림, 알림 내역, 사진 글자 인식, AI 자동 정리, 홈 화면 위젯을 제공합니다. 화면은 [Flutter](https://flutter.dev/), 알림·알람·위젯은 [네이티브(Kotlin)](https://kotlinlang.org/)로 작성했습니다.
+메모를 알림창에 고정해 두고, 앱을 열지 않아도 확인하고 고치는 안드로이드 메모 앱입니다. 예약 알림, 알림 내역, 사진 글자 인식, AI 자동 정리, 홈 화면 위젯을 제공합니다. 화면은 [Flutter](https://flutter.dev/), 알림·알람·위젯은 [네이티브(Kotlin)](https://kotlinlang.org/)로 작성했습니다.
 
 [![Android](https://img.shields.io/badge/Android-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com/)
 [![Flutter](https://img.shields.io/badge/Flutter-Dart-02569B?style=flat-square&logo=flutter&logoColor=white)](https://flutter.dev/)
