@@ -13,7 +13,7 @@ import 'package:notimemo/utils/rule_classifier.dart';
 import 'package:notimemo/storage/tutorial_storage.dart';
 import 'package:notimemo/widgets/app_toast.dart';
 import 'package:notimemo/widgets/home_widgets.dart'
-    show AppliedAnalysisChips, InputCard;
+    show AppliedAnalysisChips, CancelButton, InputCard;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 홈 화면 전체 흐름 테스트. 네이티브 채널은 가짜로 대체하고, AI 서버 통신은
@@ -814,6 +814,93 @@ void main() {
       expect(
         tester.widget<TextField>(find.byType(TextField).first).controller!.text,
         long,
+      );
+    });
+
+    homeTest('아주 긴 글이어도 맨 아래까지 스크롤하면 알림 지우기 버튼이 화면 끝에 붙지 않고 아래 여백이 남는다', (
+      tester,
+    ) async {
+      await openHome(tester);
+      await typeMemo(
+        tester,
+        List.generate(40, (i) => '긴 메모 ${i + 1}').join('\n'),
+      );
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+      // 화면(가장 바깥 스크롤)을 맨 아래까지 내린다.
+      final scroll = tester.state<ScrollableState>(
+        find.byType(Scrollable).first,
+      );
+      scroll.position.jumpTo(scroll.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      final screenHeight = tester.getSize(find.byType(Scaffold)).height;
+      final cancel = tester.getRect(find.byType(CancelButton));
+      expect(cancel.bottom, lessThanOrEqualTo(screenHeight - 15));
+      expect(tester.takeException(), isNull);
+    });
+
+    homeTest('글이 늘었다 줄어도 아래 문구는 같은 자리에 있다', (tester) async {
+      await openHome(tester);
+      // 시작 애니메이션(0.9초)이 끝나야 문구 높이가 정해진다
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 700));
+      final footer = find.byKey(const Key('home-footer'));
+      expect(footer, findsOneWidget);
+      final before = tester.getCenter(footer);
+      await typeMemo(
+        tester,
+        List.generate(40, (i) => '긴 메모 ${i + 1}').join('\n'),
+      );
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+      expect(tester.getCenter(footer), before); // 늘어나도 따라 움직이지 않는다
+      // 본문이 문구 자리까지 내려오면 투명 버튼 뒤로 비치지 않게 숨는다
+      double opacity() => tester
+          .widget<AnimatedOpacity>(
+            find.ancestor(of: footer, matching: find.byType(AnimatedOpacity)),
+          )
+          .opacity;
+      expect(opacity(), 0);
+      await typeMemo(tester, '');
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+      expect(tester.getCenter(footer), before);
+      expect(opacity(), 1); // 줄어들면 같은 자리에서 다시 보인다
+    });
+
+    homeTest('앱을 처음 열 때 문구가 본문과 함께 나타난다(한참 뒤에 뿅 나타나지 않는다)', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(420, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HomeScreen(
+            currentMode: ThemeMode.light,
+            onThemeChanged: (_) {},
+          ),
+        ),
+      );
+      // 시작 애니메이션(0.9초)이 한창인 0.3초 시점
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(find.byKey(const Key('home-footer')), findsOneWidget);
+      // 본문처럼 아래에서 올라오는 중이다(끝난 자리보다 아래에 있다가 올라와서 멈춘다)
+      final early = tester.getCenter(find.byKey(const Key('home-footer')));
+      final bodyEarly = tester.getTopLeft(find.byType(InputCard)).dy;
+      await tester.pump(const Duration(seconds: 2));
+      final settled = tester.getCenter(find.byKey(const Key('home-footer')));
+      final bodySettled = tester.getTopLeft(find.byType(InputCard)).dy;
+      expect(early.dy, greaterThan(settled.dy + 2));
+      // 올라온 양이 본문(입력창)이 올라온 양과 같다
+      expect(early.dy - settled.dy, closeTo(bodyEarly - bodySettled, 1.5));
+    });
+
+    homeTest('공백만 있을 때도 ✕를 누르면 바로 비워진다', (tester) async {
+      await openHome(tester);
+      await typeMemo(tester, '   \n  ');
+      await tester.tap(find.byKey(const Key('clear-memo')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+        '',
       );
     });
 

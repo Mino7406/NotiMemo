@@ -50,13 +50,18 @@ class _HomeScreenState extends State<HomeScreen>
   final _controller = TextEditingController();
   final _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  /// 아래 문구가 놓일 빈 자리를 재기 위한 키와, 키보드가 닫혀 있을 때 마지막으로 잰 위치.
-  /// 키보드가 올라와 화면이 줄어도 이 위치를 그대로 쓰므로 문구가 따라 올라가지 않는다.
+  /// 아래 문구는 화면 뒤에 붙박이로 둔 "배경 글씨"다. 처음 빈 자리가 생겼을 때 그 가운데 높이를 한 번만
+  /// 재서 [_footerCenterY]에 두고, 그 뒤로는 글이 늘거나 줄어도, 키보드가 올라와도 움직이지 않는다.
+  /// 입력창 같은 내용이 문구를 가린다.
   final _footerKey = GlobalKey();
-  Rect? _footerRect;
+  final _bodyKey = GlobalKey();
+  final _scrollCtrl = ScrollController();
+  double? _footerCenterY;
+  double _footerScreenHeight = 0;
 
-  /// 오른쪽 메뉴가 열려 있는지(열려 있으면 문구를 가린다)
-  bool _menuOpen = false;
+  /// 본문이 문구 자리 아래로 내려오지 않았을 때만 문구를 보여준다(내려오면 투명 버튼 뒤로 비쳐 보이므로 서서히 숨김)
+  bool _footerVisible = true;
+
   // 알림 내역(저장된 메모 전체)
   List<MemoEntry> _memoList = [];
   // 고정/인식/분석이 진행 중일 때 버튼 중복 클릭을 막으려는 표시
@@ -109,6 +114,9 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _controller.addListener(_dismissStaleUndo);
+    // 문구 높이는 처음 한 번만 정하면 되지만, 그 시점(시작 애니메이션 뒤, 빈 자리가 생긴 때)을 기다려야 해서
+    // 프레임마다 확인한다(정해진 뒤에는 바로 끝난다).
+    WidgetsBinding.instance.addPersistentFrameCallback((_) => _measureFooter());
     // 알림 권한 창이 사용 방법과 겹치지 않도록 사용 방법이 끝난 뒤에 요청한다.
     _load()
         .then((_) => _maybeShowTutorial())
@@ -130,6 +138,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     _controller.removeListener(_dismissStaleUndo);
+    _scrollCtrl.dispose();
     _aiHintTimer?.cancel();
     _animCtrl.dispose();
     WidgetsBinding.instance.removeObserver(this);
@@ -663,9 +672,13 @@ class _HomeScreenState extends State<HomeScreen>
   /// 빨간 ✕: 지울 글을 보여주며 한 번 더 묻고, 확인하면 새 메모와 분석 결과를 비운다.
   Future<void> _confirmClearMemo() async {
     final text = _controller.text;
-    if (text.trim().isEmpty) return;
-    final ok = await showClearMemoDialog(context, text);
-    if (!ok || !mounted) return;
+    if (text.isEmpty) return;
+    // 공백이나 줄바꿈뿐이면 지울 내용이 없으니 묻지 않고 바로 비운다(✕가 눌러도 안 먹는 것처럼 보이지 않게)
+    final onlySpaces = text.trim().isEmpty;
+    if (!onlySpaces) {
+      final ok = await showClearMemoDialog(context, text);
+      if (!ok || !mounted) return;
+    }
     _controller.clear();
     MemoStorage.setCurrent('');
     setState(() {
@@ -794,17 +807,53 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  /// 키보드가 닫혀 있을 때만 빈 자리의 화면상 위치를 다시 잰다.
+  /// 문구는 움직이지 않는다. 할 일은 두 가지다.
+  /// 1) 높이를 한 번 정한다: 키보드가 내려가 있고 문구가 들어갈 만한 빈 자리가 있을 때 그 가운데를 잰다
+  ///    (화면 크기가 바뀌면 다시).
+  /// 2) 보일지 정한다: 본문 맨 아래가 문구 자리보다 위에 있을 때만 보이고, 본문이 길어져 문구 자리까지 내려오면
+  ///    서서히 숨는다(투명한 버튼 뒤로 글씨가 비쳐 보이지 않게).
   void _measureFooter() {
-    if (!mounted || View.of(context).viewInsets.bottom > 0) return;
+    if (!mounted) return;
+    final view = View.of(context);
     final ro = _footerKey.currentContext?.findRenderObject();
-    if (ro is! RenderBox || !ro.attached || !ro.hasSize) return;
-    final rect = ro.localToGlobal(Offset.zero) & ro.size;
-    final old = _footerRect;
-    if (old == null ||
-        (old.top - rect.top).abs() > 0.5 ||
-        (old.height - rect.height).abs() > 0.5) {
-      setState(() => _footerRect = rect);
+    final laidOut = ro is RenderBox && ro.attached && ro.hasSize;
+    var changed = false;
+
+    // 시작할 때 본문은 아래에서 올라오는 중이라 잰 위치에 그만큼이 섞인다. 그 이동량을 빼서 최종 자리를 구한다
+    // (이렇게 하면 애니메이션이 끝나길 기다리지 않고 처음부터 문구를 본문과 같이 나타낼 수 있다).
+    final bodyBox = _bodyKey.currentContext?.findRenderObject();
+    final slideShift = bodyBox is RenderBox && bodyBox.hasSize
+        ? _slideAnim.value.dy * bodyBox.size.height
+        : 0.0;
+
+    final needCenter =
+        _footerCenterY == null ||
+        _footerScreenHeight != view.physicalSize.height;
+    if (needCenter &&
+        laidOut &&
+        view.viewInsets.bottom == 0 &&
+        ro.size.height >= 64) {
+      _footerCenterY =
+          (ro.localToGlobal(Offset.zero) & ro.size).center.dy - slideShift;
+      _footerScreenHeight = view.physicalSize.height;
+      changed = true;
+    }
+
+    final cy = _footerCenterY;
+    if (cy != null && laidOut) {
+      // 본문 맨 아래(= 빈 자리의 위쪽 끝)가 문구 위쪽보다 위에 있어야 한다
+      final visible = ro.localToGlobal(Offset.zero).dy - slideShift <= cy - 32;
+      if (visible != _footerVisible) {
+        _footerVisible = visible;
+        changed = true;
+      }
+    }
+
+    // 프레임 처리 중에 setState를 하면 다음 프레임이 예약되지 않아서, 프레임이 끝난 뒤에 다시 그리게 한다
+    if (changed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
     }
   }
 
@@ -814,15 +863,55 @@ class _HomeScreenState extends State<HomeScreen>
     final textColor = isDark ? Colors.white : const Color(0xFF111827);
     final subColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measureFooter());
-    final footerRect = _footerRect;
+    final footerY = _footerCenterY;
 
     // 문구는 Scaffold 밖(Stack)에 그려서, 키보드로 본문이 줄어들어도 위치가 변하지 않게 한다
     return Stack(
       children: [
+        // 가장 뒤: 배경색 위에 문구를 그린다. 본문(Scaffold)이 투명이라 입력창 같은 내용이 문구를 가린다
+        ColoredBox(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          child: const SizedBox.expand(),
+        ),
+        if (footerY != null)
+          Positioned(
+            left: 0,
+            right: 0,
+            top: footerY - 32,
+            height: 64,
+            // 위치는 고정이고 보이고 숨는 것만 서서히 바뀐다
+            // 처음 열릴 때는 본문과 같은 페이드(_fadeAnim)와 슬라이드(아래에서 올라옴)로 함께 나타난다.
+            // 본문의 슬라이드는 본문 높이 기준이라, 같은 이동량을 본문 높이로 계산해서 맞춘다.
+            child: AnimatedBuilder(
+              animation: _slideAnim,
+              builder: (_, child) {
+                final box = _bodyKey.currentContext?.findRenderObject();
+                final bodyHeight = box is RenderBox && box.hasSize
+                    ? box.size.height
+                    : 0.0;
+                return Transform.translate(
+                  offset: Offset(0, _slideAnim.value.dy * bodyHeight),
+                  child: child,
+                );
+              },
+              child: FadeTransition(
+                opacity: _fadeAnim,
+                child: AnimatedOpacity(
+                  opacity: _footerVisible ? 1 : 0,
+                  duration: const Duration(milliseconds: 300),
+                  child: IgnorePointer(
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: Center(child: HomeFooter(isDark: isDark)),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         Scaffold(
+          backgroundColor: Colors.transparent,
           key: _scaffoldKey,
-          onEndDrawerChanged: (open) => setState(() => _menuOpen = open),
           endDrawer: AppMenuDrawer(
             scheduledCount: _scheduled.length,
             historyCount: _memoList.length,
@@ -852,18 +941,18 @@ class _HomeScreenState extends State<HomeScreen>
               child: SlideTransition(
                 position: _slideAnim,
                 child: Column(
+                  key: _bodyKey,
                   children: [
                     TopBar(subColor: subColor, textColor: textColor),
                     Expanded(
                       // 내용이 화면보다 짧으면 남는 아래쪽 빈 자리를 문구 영역으로 쓴다
-                      child: LayoutBuilder(
-                        builder: (context, box) => SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              minHeight: box.maxHeight - 4,
-                            ),
-                            child: IntrinsicHeight(
+                      // 본문은 내용 높이 그대로 두고(길어지면 스크롤), 그 아래에 남는 자리만 따로 채운다
+                      child: CustomScrollView(
+                        controller: _scrollCtrl,
+                        slivers: [
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                            sliver: SliverToBoxAdapter(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -952,16 +1041,18 @@ class _HomeScreenState extends State<HomeScreen>
                                         : '알림 지우기',
                                     onTap: _cancelNotification,
                                   ),
-                                  // 입력창·버튼 아래 남는 빈 자리. 문구는 여기가 아니라 아래 Stack에서 이 자리의
-                                  // 위치를 따라 그린다(키보드가 올라와도 제자리에 있도록)
-                                  Expanded(
-                                    child: SizedBox.expand(key: _footerKey),
-                                  ),
+                                  // 맨 아래 여백(글이 길어져 스크롤해도 버튼이 화면 끝에 붙지 않게)
+                                  const SizedBox(height: 20),
                                 ],
                               ),
                             ),
                           ),
-                        ),
+                          // 입력창·버튼 아래 남는 빈 자리(없으면 높이 0). 문구 높이를 정하려고 위치만 잰다
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: SizedBox.expand(key: _footerKey),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -970,26 +1061,6 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ),
-        if (footerRect != null && !_menuOpen)
-          Positioned(
-            left: 0,
-            right: 0,
-            top: footerRect.top,
-            height: footerRect.height,
-            // 처음 열릴 때 본문과 같은 페이드·슬라이드로 나타나게 한다
-            child: FadeTransition(
-              opacity: _fadeAnim,
-              child: SlideTransition(
-                position: _slideAnim,
-                child: IgnorePointer(
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: Center(child: HomeFooter(isDark: isDark)),
-                  ),
-                ),
-              ),
-            ),
-          ),
       ],
     );
   }

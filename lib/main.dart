@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/home_screen.dart';
 import 'storage/settings_storage.dart';
 import 'theme/app_theme.dart';
@@ -27,6 +28,18 @@ class NotiMemoApp extends StatelessWidget {
       builder: (_, mode, _) => MaterialApp(
         title: '알림메모',
         debugShowCheckedModeBanner: false,
+        // 글을 길게 눌렀을 때 뜨는 복사/붙여넣기 같은 기본 문구를 기기 언어로 보여준다.
+        // 기기 언어가 아래 목록에 없으면 영어로 나온다.
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        supportedLocales: const [
+          Locale('ko'),
+          Locale('en'),
+          Locale('ja'),
+          Locale('zh'),
+          Locale('es'),
+          Locale('fr'),
+          Locale('de'),
+        ],
         theme: _buildTheme(Brightness.light),
         darkTheme: _buildTheme(Brightness.dark),
         themeMode: mode,
