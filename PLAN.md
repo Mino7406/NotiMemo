@@ -87,7 +87,7 @@
 
 **주의·교훈**
 - **`home_screen.dart`·`home_widgets.dart`는 여러 기능이 같은 줄을 얽어서 바꿨다.** 한 기능만 떼어 되돌리려면 위 항목 단위로 읽고 테스트로 확인한다(`test/home_ai_flow_test.dart`, `card_chips_test.dart`, `input_grow_test.dart`, `notice_buttons_test.dart`, `list_row_test.dart`, `class_filter_*_test.dart`).
-- **`flutter pub get`이 `analysis_options.yaml`을 스스로 고친다**("build·플랫폼 폴더 제외" 추가). 의도한 변경이 아니니 커밋하지 말고 `git checkout -- analysis_options.yaml`.
+- `flutter pub get`이 `analysis_options.yaml`에 "build·플랫폼 폴더 제외"를 스스로 넣던 문제는 그 설정을 파일에 미리 넣어 두어서 더는 생기지 않는다(2026-10-03). VS Code가 계속 "pub get"을 권하면 `pubspec.yaml`이 `.dart_tool/package_config.json`보다 새 파일이라서이니 `flutter pub get` 후에도 안 없어지면 `touch .dart_tool/package_config.json`.
 - 파일은 **CRLF**(윈도우)다. 문자열을 코드로 치환할 때는 `\r\n`을 먼저 `\n`으로 바꿔서 비교하고, 한글 문자열의 `\n`이 실제 줄바꿈으로 들어가지 않게 조심한다(여러 번 깨졌다).
 - 윤곽선 버튼은 여백이 있어 안내 창의 버튼 줄이 넘칠 수 있다 → `Wrap`을 `SizedBox(width: double.infinity)`로 감싸야 오른쪽 정렬이 유지된다.
 - 테스트 팁: 계속 도는 애니메이션(안내 말풍선·로딩 스피너)이 있으면 `pumpAndSettle`이 끝나지 않는다 → 고정 시간만 `pump`. 홈 화면 테스트는 `homeTest`가 끝에 13초를 흘려 보내 타이머를 정리한다. 한 줄 높이는 25.6이 아니라 **26**으로 그려진다.
