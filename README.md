@@ -1,8 +1,9 @@
 <div align="center">
 
-<img src="assets/icon.png" width="120" height="120" alt="NotiMemo 앱 아이콘">
-
-# 알림메모 (NotiMemo)
+<h1>
+  <a href="https://github.com/Mino7406/NotiMemo/releases"><img src="assets/readme_icon.png" width="100" alt="NotiMemo 앱 아이콘"></a><br>
+  알림메모 (NotiMemo)
+</h1>
 
 메모를 알림창에 고정해 두고, 앱을 열지 않아도 확인하고 고치는 안드로이드 메모 앱입니다. 예약 알림, 알림 내역, 사진 글자 인식, AI 자동 정리, 홈 화면 위젯을 제공합니다. 화면은 [Flutter](https://flutter.dev/), 알림·알람·위젯은 네이티브(Kotlin)로 작성했습니다.
 
@@ -100,7 +101,7 @@ NotiMemo/
 │  ├─ src/index.js              # 요청 처리: 크기·JSON 확인 → 횟수 제한 → AI 호출 → 결과 정리
 │  └─ src/classify.js           # 분류 기준·프롬프트·결과 검증
 ├─ test/                        # 자동 테스트(`flutter test`)
-├─ assets/                      # Caveat 손글씨 폰트(OFL), 런처 아이콘 원본
+├─ assets/                      # Caveat 손글씨 폰트(OFL), 런처 아이콘 원본(icon.png), README용 축소 아이콘(readme_icon.png)
 └─ PLAN.md                      # 개발 기록과 구조 메모
 ```
 
