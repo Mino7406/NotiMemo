@@ -7,7 +7,7 @@ const { spawnSync } = require('child_process');
 const W = 720, H = 1560;
 const DL = path.join(process.env.USERPROFILE, 'Downloads');
 const SRC = {
-  A: path.join(DL, 'Screen_Recording_20261005_183619.mp4'),
+  A: path.join(DL, 'Screen_Recording_20261005_183619 (1).mp4'), // 1080x2340 (this PC); the unnumbered file is the 720x1500 duplicate
   C: path.join(DL, 'Screen_Recording_20261005_184830.mp4'),
   D: path.join(DL, 'Screen_Recording_20261005_185126_One UI Home.mp4'),
 };
@@ -72,7 +72,8 @@ edl.segments.forEach((seg, i) => {
   let k = 0;
   const lbl = () => `[s${n}_${k++}]`;
   let next = lbl();
-  chain.push(`${cur}scale=${W}:${H},setsar=1${next}`);
+  // Screen recordings are VFR: static screens have sparse frames, so cuts drift. Lock to 30fps from t=0 and trim to the exact length.
+  chain.push(`${cur}fps=30:start_time=0,trim=duration=${f3(dur)},setpts=PTS-STARTPTS,scale=${W}:${H},setsar=1${next}`);
   cur = next;
 
   // privacy blurs (times relative to segment start, before speed change)
