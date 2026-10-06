@@ -1,0 +1,3 @@
+{"segments":[{"src":"C","start":44,"end":50,"speed":1.5,"purpose":"t","subtitles":[{"from":44,"to":47,"text":"테마, 진동, AI 기능까지\\n설정할 수 있어요","pos":"bottom"},{"from":47,"to":50,"text":"위쪽 자막 테스트","pos":"top"}]}],
+"blurs":[{"src":"C","start":44,"end":50,"x":0.05,"y":0.55,"w":0.9,"h":0.15,"what":"t"}],
+"cover_status_bar":true,"status_bar_height":0.03,"intro_card":"알림메모\\n잊지 말아야 할 것을 알림창에","outro_card":"감사합니다","est_total_seconds":10,"rationale":"t"}

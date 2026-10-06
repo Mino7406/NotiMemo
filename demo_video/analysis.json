@@ -1,0 +1,949 @@
+{
+ "analyze:A": {
+  "scenes": [
+   {
+    "start": 0,
+    "end": 2,
+    "what": "0s: phone home screen (night-sky wallpaper, dock icons), the 알림메모 app icon (purple pin) sits alone in the centre. The icon gets tapped between 0s and 1s. 1s: app-open zoom animation, with the app's main screen growing out of the icon.",
+    "feature": "App launch (intro)",
+    "value": "useful",
+    "note": "Clean opening shot. The launch animation works as a natural transition. Keep about 1-1.5s, e.g. 0.5-2.0. Privacy: red recording chip, recorder bracket icon and red cast icon are in the status bar."
+   },
+   {
+    "start": 2,
+    "end": 4,
+    "what": "2s: main screen with header '알림메모' and hamburger menu, title '지금 기억해야 할 것은 무엇인가요?', subtitle '메모를 알림창에 고정해 언제든지 확인하세요.', an empty '새 메모' card (placeholder '기억해야 할 것을 입력하세요...'), the gradient '알림 고정하기' button, a disabled '알림 지우기' button and the 'Don't forget' quote. A tap indicator lands on the memo card. 3s: Korean keyboard is up and the finger taps the 한/영 key to switch to English.",
+    "feature": "Main screen / memo input",
+    "value": "filler",
+    "note": "Shows the main screen layout. Compress to about 0.5-1s, e.g. keep 2.0-2.8 and jump straight into typing."
+   },
+   {
+    "start": 4,
+    "end": 8,
+    "what": "Typing the memo on the English keyboard. 4s: 'N' (the red X clear button appears in the card). 5s: 'Noti' (the AI-sparkle and clock/예약 icon buttons appear in the bottom-right of the card). 6s: 'Notimemo' with the 'o' key preview. 7s: finished text 'Notimemo', idle. '알림 고정하기' is tapped between 7s and 8s.",
+    "feature": "Memo input",
+    "value": "useful",
+    "note": "Typing can be sped up 2-3x (4.0-7.5). Text is lowercase 'Notimemo'."
+   },
+   {
+    "start": 8,
+    "end": 10,
+    "what": "Result of pinning. 8s: green toast '알림이 고정되었습니다!' over the memo card. A new banner '알림이 현재 고정되어 있어요' (with a blue dot) appears above the card, the input field is cleared, and a pin icon shows up in the status bar next to the recording chip. 9s: keyboard is dismissed, the toast moves to the bottom of the screen, and the '알림 지우기' button turns active (red outline).",
+    "feature": "알림 고정 (pin memo to notification)",
+    "value": "highlight",
+    "note": "Core feature moment, keep at real time. The status-bar pin icon at 8-9s is good evidence, so don't let the recorder-chip blur cover it (pin sits at x≈0.225-0.25)."
+   },
+   {
+    "start": 10,
+    "end": 12,
+    "what": "10s: the notification shade is being pulled down (blurred transition over the app). 11s: shade fully open with date '10월 5일 월요일', the pill '방해 금지 모드가 켜져 있습니다.', a collapsed 알림메모 notification (app name 알림메모, 오후 6:34, body 'Notimemo') and, under it, the screen-recorder notification '녹화를 중지하려면 여기를 누르세요.' with timer 00:11.",
+    "feature": "Pinned memo visible in notification shade",
+    "value": "highlight",
+    "note": "The 10s pull-down blur is a fine transition. Recorder notification must be blurred from 11s. The DND pill is a little distracting but harmless."
+   },
+   {
+    "start": 12,
+    "end": 16,
+    "what": "12s: the 알림메모 notification is expanded and shows its action buttons '수정 | 지우기'. 13s: the user drags the expanded card sideways (shifted right about 17% of width, touch dot on 'Notimemo'). It is not dismissed. 14s: the card is back in place but collapsed again (00:14). 15s: expanded again with '수정 | 지우기'. '수정' is tapped between 15s and 16s.",
+    "feature": "Notification action buttons (수정/지우기); ongoing notification can't be swiped away",
+    "value": "useful",
+    "note": "Awkward expand-collapse-expand fiddling. Best cut: keep 12.0-13.0 (expanded actions), drop 13-15, then resume at about 15.5 for the 수정 tap. Alternatively keep 13-14 with a caption like '스와이프해도 사라지지 않아요' to sell the persistence. Recorder notification box moves between 12-13, 14 and 15 (see privacy)."
+   },
+   {
+    "start": 16,
+    "end": 19,
+    "what": "After tapping 수정: 16s, an inline reply field '수정할 내용' with a '전송' button opens inside the notification and the English keyboard slides up. 17-18s: the field stays empty, no typing (18s: touch dot near the bottom-left 한/영 key).",
+    "feature": "Edit memo directly from notification (inline reply)",
+    "value": "filler",
+    "note": "Keep about 0.5s at 16 to show the reply field opening. 16.5-19.0 is dead time, cut it."
+   },
+   {
+    "start": 19,
+    "end": 28,
+    "what": "Typing the edit in the notification reply field. 19s: 'No'. 20s: 'Noti'. 21s: 'Notimom' (typo, 'o' preview popup). 22s: backspace pressed, still 'Notimom'. 23s: 'Notimem'. 24s: 'Notimemo', keyboard switched to the symbols page. 25s: 'Notimemo-1'. 26-27s: idle with 'Notimemo-1' in the field before pressing '전송'. 전송 is tapped between 27s and 28s.",
+    "feature": "Edit memo directly from notification (inline reply)",
+    "value": "useful",
+    "note": "Typing with a typo/backspace (21-23) and a 2s idle (26-27). Speed up 19-26 by 3-4x and cut 26-27.5 to just before the send."
+   },
+   {
+    "start": 28,
+    "end": 30,
+    "what": "28s: keyboard closes and the 알림메모 notification immediately shows the updated body 'Notimemo-1' with '수정 | 지우기' buttons. 29s: same state, static.",
+    "feature": "Edit from notification - result",
+    "value": "highlight",
+    "note": "Payoff of the edit. Keep about 1-1.5s (28.0-29.5)."
+   },
+   {
+    "start": 30,
+    "end": 33,
+    "what": "30s: shade still showing 'Notimemo-1' with '수정 | 지우기'. '지우기' is tapped between 30s and 31s. 31s: the 알림메모 notification is gone (a thin remnant animating out above), leaving only the recorder notification (00:31) at the top. 32s: shade being swiped up / closing (heavily blurred fade with touch dot at the bottom).",
+    "feature": "Clear pinned memo from notification (지우기)",
+    "value": "highlight",
+    "note": "Keep 30.0-31.8. 32 is a blurry closing transition; cut it or use a cross-dissolve. The recorder notification moves up at 31s (separate blur box)."
+   },
+   {
+    "start": 33,
+    "end": 36,
+    "what": "Back in the app: 33s, the '알림이 현재 고정되어 있어요' banner is gone, '알림 지우기' is disabled again, and the status-bar pin icon is gone, which confirms the clear. 34s: stray touch dot near the top centre (no effect). 35s: idle.",
+    "feature": "Clear confirmation (state synced back to app)",
+    "value": "filler",
+    "note": "Keep about 0.7-1s at 33 as confirmation, cut 34-36."
+   },
+   {
+    "start": 36,
+    "end": 46,
+    "what": "36s: the memo card is tapped and the keyboard rises. 37s: Korean keyboard fully up. Typing a Korean memo: 38s '내' (AI sparkle button appears), 39s '낼' (clock/예약 button appears), 40s '낼 앗' (mid-composition), 41s '낼 아침', 42s '낼 아침 9시', 43s '낼 아침 9시 ' (space), 44s '낼 아침 9시 전화', 45s '낼 아침 9시 전화하기' (final).",
+    "feature": "Memo input (natural-language Korean memo for AI)",
+    "value": "useful",
+    "note": "8-10s of typing. Speed up 4x or more, or show only 36.0-37.0 plus 45.0-46.0 with a jump cut. Final text '낼 아침 9시 전화하기' is clear and a good AI example."
+   },
+   {
+    "start": 46,
+    "end": 51,
+    "what": "46s: touch on the AI 자동 정리 sparkle button inside the memo card. 47s: the button turns into a spinner, a thin progress bar appears under the memo card (pushing '알림 고정하기' down), and the keyboard starts closing. 48-50s: keyboard gone, the spinner keeps turning and the progress bar fills (about 20% to 50%). The analysis is running on the server.",
+    "feature": "AI 자동 정리 (AI analysis via Cloudflare server)",
+    "value": "useful",
+    "note": "About 4s of waiting (47-51). Speed up 2-3x or trim to about 1.5s (e.g. 46.0-47.5 then 49.5-51.0). Keep the tap on the sparkle button visible."
+   },
+   {
+    "start": 51,
+    "end": 55,
+    "what": "Bottom sheet '자동 정리' with an 'AI 분석' badge. Chips: '약속' (category) and '우선순위 높음' (priority, red). '예약 시각 제안' suggests '10월 6일 (화) 오전 9시', and the note says '알림은 30분 전(10월 6일 (화) 오전 8시 30분)으로 맞춰 드려요. 다음 화면에서 고칠 수 있어요.' Buttons: '적용하고 예약 시각 확인' (primary gradient) and '적용만 하기'. Static for 4 frames. '적용하고 예약 시각 확인' is tapped between 54s and 55s.",
+    "feature": "AI 자동 정리 result: category, priority, suggested reservation time with 여유 시간 lead time",
+    "value": "highlight",
+    "note": "Key AI moment. Keep about 2.5-3s (51.0-54.0) so viewers can read it. Consider a zoom-in on the sheet (lower ~42% of frame) or caption '내일 9시 → 30분 전 8:30 자동 계산'."
+   },
+   {
+    "start": 55,
+    "end": 59,
+    "what": "Sheet '언제 고정할까요?'. Quick chips: '5분 뒤', '30분 뒤', '1시간 뒤', '오늘 저녁 7시' (more off-screen). Date list: '10월 5일 (월)', '10월 6일 (화)' (selected), '10월 7일 (수)'. 오전 (selected) / 오후 toggle, time pickers '8 : 30' with up/down arrows, CTA '10월 6일 (화) 오전 8:30에 고정'. AI values come pre-filled. 55s: finger dot to the right of the minute box. 56-58s: static, no interaction.",
+    "feature": "예약 (schedule pin) prefilled by AI with 30-min 여유 시간",
+    "value": "useful",
+    "note": "Keep about 1.5-2s (55.0-56.5). 56.5-58.5 is dead time."
+   },
+   {
+    "start": 59,
+    "end": 61,
+    "what": "59s: touch on the CTA '10월 6일 (화) 오전 8:30에 고정'. The sheet starts sliding down and the memo field behind is cleared to its placeholder. 60s: green toast '10/6 오전 8:30에 고정되도록 예약했어요.', but the Korean keyboard unexpectedly pops back up (memo field regained focus).",
+    "feature": "예약 confirmation",
+    "value": "useful",
+    "note": "Awkward keyboard flash at 60. Prefer cutting from 59.3 straight to 61.0, where the same toast shows at the bottom without the keyboard."
+   },
+   {
+    "start": 61,
+    "end": 64,
+    "what": "61s: keyboard gone, main screen empty, toast '10/6 오전 8:30에 고정되도록 예약했어요.' at the bottom. 62-63s: idle main screen (toast gone). The hamburger menu is tapped between 63s and 64s.",
+    "feature": "예약 confirmation (toast)",
+    "value": "useful",
+    "note": "Keep 61.0-62.0 for the toast. 62-63.5 is dead time, cut it."
+   },
+   {
+    "start": 64,
+    "end": 67,
+    "what": "Side drawer open on the right: header '알림메모' with an X. Section '메모 입력': 'AI 자동 정리', '사진으로 메모 가져오기'. Section '예약': '예약 생성', '예약 목록' (badge 3). Section '기록': '알림 내역' (badge 2). Then '설정' and '사용 방법'. Static for 3 frames. '사진으로 메모 가져오기' is tapped between 66s and 67s.",
+    "feature": "Navigation drawer - feature overview (예약 목록, 알림 내역, 설정, 사용 방법)",
+    "value": "useful",
+    "note": "Good one-shot overview of all features. Keep about 1.5-2s (64.0-65.8). Could carry a caption listing the features."
+   },
+   {
+    "start": 67,
+    "end": 71,
+    "what": "Bottom sheet '사진으로 메모 가져오기' with rows '카메라로 촬영' and '갤러리에서 선택'. 67-69s static. 70s: tap on '카메라로 촬영' (ripple and touch dot). The sheet begins sliding down, and a thin loading bar shows under the memo card.",
+    "feature": "사진으로 메모 가져오기 (camera/gallery OCR entry)",
+    "value": "useful",
+    "note": "Trim 67-69 to about 1s (e.g. 67.0-68.0), then 69.8-71.0 for the tap."
+   },
+   {
+    "start": 71,
+    "end": 76,
+    "what": "System camera (Samsung camera UI: flash off, 12M, zoom .6 / 1x / 2 / 3, grid, floating shutter plus main shutter, switch-camera button) aimed at the handwritten word 'NotiMemo' in black marker on lined notebook paper, with a focus reticle on the text. The user is framing for 5 frames. At 72-73s a small green camera-in-use dot shows at top right. The shutter is pressed between 75s and 76s.",
+    "feature": "사진으로 메모 가져오기 - camera capture of handwriting",
+    "value": "useful",
+    "note": "Too long; keep about 1.5s (e.g. 74.0-75.8). Paper has faint bleed-through writing from the other side (illegible, not a privacy issue). No status bar and no recorder chip in camera frames."
+   },
+   {
+    "start": 76,
+    "end": 79,
+    "what": "Camera capture review: still photo of 'NotiMemo' handwriting with '다시 시도' (left) and '확인' (right) buttons. 76-77s static. 78s: '확인' is pressed (button highlighted).",
+    "feature": "사진으로 메모 가져오기 - confirm photo",
+    "value": "useful",
+    "note": "Trim to about 1s (77.5-79.0) showing the 확인 press."
+   },
+   {
+    "start": 79,
+    "end": 82,
+    "what": "Back in the app (6:36): the memo field is auto-filled with the OCR result 'Noti Nemo' (cursor at end). Green toast '사진으로부터 글자를 불러왔어요.' at the bottom (79-81s). A hint bubble 'AI가 자동으로 분석해줘요!' with an arrow pointing at the AI sparkle button appears and pulses (bright at 80s, dim at 79s and 81s).",
+    "feature": "사진으로 메모 가져오기 - OCR result",
+    "value": "highlight",
+    "note": "AWKWARD: OCR misread. Handwritten 'NotiMemo' became 'Noti Nemo' (M read as N, plus an inserted space). Either keep it briefly (79.0-80.5) with an honest caption, or use a cleaner OCR take from another recording if available. The hint bubble is a nice touch."
+   },
+   {
+    "start": 82,
+    "end": 86,
+    "what": "Idle on the main screen with 'Noti Nemo' in the field. The toast is gone (82s) and the hint bubble 'AI가 자동으로 분석해줘요!' keeps pulsing (bright 82s/84s, dim 83s/85s). 83-84s: touch dot at the extreme top-right corner (user starting to pull the shade down). No app interaction.",
+    "feature": "none (end of take)",
+    "value": "cut",
+    "note": "Dead time before stopping the recording. Cut."
+   },
+   {
+    "start": 86,
+    "end": 87.1,
+    "what": "Notification shade pulled down showing only the expanded screen-recorder notification ('화면 녹화 · 오후 6:34', '녹화를 중지하려면 여기를 누르세요.', '01:26'), with the DND pill above. A finger touch dot lands just below it to stop recording. The video ends at 87.1s.",
+    "feature": "none (stopping screen recorder)",
+    "value": "cut",
+    "note": "Recorder UI only. Cut entirely."
+   }
+  ],
+  "privacy": [
+   {
+    "start": 0,
+    "end": 8,
+    "what": "Status bar: red screen-recording chip (pill with record icon) right of the clock, plus the recorder's bracket-frame status icon right after it",
+    "box": "x=0.10,y=0.00,w=0.18,h=0.04 (pill x≈0.12-0.21, bracket icon x≈0.22-0.26; stationary)"
+   },
+   {
+    "start": 8,
+    "end": 10,
+    "what": "Status bar: red screen-recording chip. The app's pin icon now sits between the chip and the recorder bracket icon, so use two boxes to keep the pin (x≈0.225-0.25) visible",
+    "box": "chip: x=0.10,y=0.00,w=0.12,h=0.04; bracket icon: x=0.255,y=0.00,w=0.06,h=0.04"
+   },
+   {
+    "start": 10,
+    "end": 11,
+    "what": "Status bar: red recording chip and bracket icon, still visible (blurred) while the shade is being pulled down",
+    "box": "x=0.10,y=0.00,w=0.18,h=0.045"
+   },
+   {
+    "start": 0,
+    "end": 11,
+    "what": "Status bar right side: red screen-share/cast icon (Android's 'screen is being recorded' indicator), 2nd icon after the DND icon",
+    "box": "x=0.68,y=0.00,w=0.085,h=0.04"
+   },
+   {
+    "start": 11,
+    "end": 33,
+    "what": "Shade status-bar row (lower position): red screen-share/cast recording icon",
+    "box": "x=0.67,y=0.03,w=0.09,h=0.045"
+   },
+   {
+    "start": 11,
+    "end": 12,
+    "what": "Recorder notification in shade ('녹화를 중지하려면 여기를 누르세요.' + timer) below the collapsed 알림메모 card",
+    "box": "x=0.02,y=0.25,w=0.96,h=0.11"
+   },
+   {
+    "start": 12,
+    "end": 14,
+    "what": "Recorder notification in shade, pushed down by the expanded 알림메모 card (수정/지우기 row)",
+    "box": "x=0.02,y=0.29,w=0.96,h=0.11"
+   },
+   {
+    "start": 14,
+    "end": 15,
+    "what": "Recorder notification in shade (알림메모 card collapsed again)",
+    "box": "x=0.02,y=0.25,w=0.96,h=0.11"
+   },
+   {
+    "start": 15,
+    "end": 16,
+    "what": "Recorder notification in shade (알림메모 card expanded again)",
+    "box": "x=0.02,y=0.29,w=0.96,h=0.11"
+   },
+   {
+    "start": 16,
+    "end": 28,
+    "what": "Recorder notification in shade, below the inline reply field '수정할 내용 / 전송'",
+    "box": "x=0.02,y=0.30,w=0.96,h=0.11"
+   },
+   {
+    "start": 28,
+    "end": 31,
+    "what": "Recorder notification in shade, below the expanded 'Notimemo-1' card",
+    "box": "x=0.02,y=0.29,w=0.96,h=0.11"
+   },
+   {
+    "start": 31,
+    "end": 32,
+    "what": "Recorder notification moved to the top after the 알림메모 notification was cleared",
+    "box": "x=0.02,y=0.20,w=0.96,h=0.12"
+   },
+   {
+    "start": 32,
+    "end": 33,
+    "what": "Shade closing (heavily blurred). Ghost of the recorder notification may be faintly visible; blur defensively or cut this second",
+    "box": "x=0.02,y=0.15,w=0.96,h=0.20"
+   },
+   {
+    "start": 32,
+    "end": 71,
+    "what": "Status bar: red recording chip plus recorder bracket-frame icon (no pin icon in this range). Also visible over the side drawer 64-67s and the photo sheet 67-71s",
+    "box": "x=0.10,y=0.00,w=0.18,h=0.04"
+   },
+   {
+    "start": 33,
+    "end": 71,
+    "what": "Status bar right side: red screen-share/cast recording icon",
+    "box": "x=0.68,y=0.00,w=0.085,h=0.04"
+   },
+   {
+    "start": 79,
+    "end": 86,
+    "what": "Status bar: red recording chip plus recorder bracket-frame icon (after returning from the camera; no status bar during camera 71-79)",
+    "box": "x=0.10,y=0.00,w=0.18,h=0.04"
+   },
+   {
+    "start": 79,
+    "end": 86,
+    "what": "Status bar right side: red screen-share/cast recording icon",
+    "box": "x=0.68,y=0.00,w=0.085,h=0.04"
+   },
+   {
+    "start": 86,
+    "end": 87.1,
+    "what": "Shade: expanded screen-recorder notification ('화면 녹화 / 녹화를 중지하려면 여기를 누르세요. / 01:26') plus the red cast icon in the shade status row. Recommended to cut this segment entirely",
+    "box": "notification: x=0.02,y=0.16,w=0.96,h=0.12; cast icon: x=0.67,y=0.03,w=0.09,h=0.045"
+   }
+  ],
+  "summary": "Source A (Screen_Recording_20261005_183619.mp4, 87.1s), timeline at 1-second resolution. I read all 9 sheets (A_01-A_09) and zoomed into individual cells to check the on-screen text.\n\nHow to read the times: scene start/end are half-open (start ≤ t < end) and use the yellow frame labels. A tap that falls between two sampled frames is written as 'between Xs and Ys'.\n\nThe take, in order:\n1. 0-2s: launch from the home-screen icon.\n2. 2-8s: type 'Notimemo', then tap 알림 고정하기.\n3. 8-10s: toast '알림이 고정되었습니다!', the banner '알림이 현재 고정되어 있어요' and a pin icon in the status bar.\n4. 10-16s: pull down the shade. The memo is visible, the card expands to show 수정/지우기, and a sideways drag at 13s does not dismiss it.\n5. 16-30s: inline-reply edit from the notification. Typing has a typo; the result is 'Notimemo-1'.\n6. 30-33s: 지우기 clears the notification, and the app syncs to that at 33s.\n7. 36-46s: type '낼 아침 9시 전화하기'.\n8. 46-51s: AI analysis loading.\n9. 51-55s: AI 자동 정리 sheet. Shows 약속 / 우선순위 높음, suggests 10월 6일 (화) 오전 9시, and offers a 30-minute 여유 시간 (8:30).\n10. 55-59s: the '언제 고정할까요?' scheduler, pre-filled with 10/6 8:30.\n11. 59-62s: toast '10/6 오전 8:30에 고정되도록 예약했어요.' The keyboard flashes up for no reason at 60s.\n12. 64-67s: drawer overview (AI 자동 정리, 사진으로 메모 가져오기, 예약 생성, 예약 목록 [3], 알림 내역 [2], 설정, 사용 방법).\n13. 67-79s: photo import with the system camera, of the handwritten 'NotiMemo'.\n14. 79-82s: OCR fills the field with 'Noti Nemo' (a misread) and shows the toast '사진으로부터 글자를 불러왔어요.'\n15. 82-87.1s: dead time, then stopping the recorder. Cut.\n\nMain dead time and slow parts:\n- 16.5-19 (empty reply field)\n- 26-27.5 (idle before 전송)\n- 32 (blurred shade close)\n- 34-36\n- 47-51 (AI wait; speed it up)\n- 56.5-58.5\n- 60 (keyboard flash)\n- 62-63.5\n- 67-69\n- 71-74 (camera framing)\n- 76-77.5\n- 82-87.1\n\nTyping to speed up 2-4x: 4-7.5, 19-26 and 36-46.\n\nAwkward moments:\n- 13-15: notification expand → collapse → expand fiddling.\n- 21-23: typo and backspace.\n- 60: keyboard pops back up after scheduling.\n- 79: the OCR misread, handwritten 'NotiMemo' → 'Noti Nemo'. Caption it honestly or use another take.\n\nRough cut, about 35-40s of output:\n- 0.5-2.8\n- 4-8 at 2.5x\n- 8-12.9\n- 15.5-16.5\n- 19-26 at 3x\n- 27.5-31.8\n- 33-33.8\n- 36-46 at 4x\n- 46-51 at 2.5x\n- 51-56.5\n- 58.8-59.4\n- 61-62\n- 63.8-65.8\n- 66.8-68\n- 69.8-71\n- 74-75.8\n- 77.5-80.5\n\nPrivacy findings:\n- **No email:** video A never opens the 설정 screen, so the personal email rlaalsgh7406@gmail.com does not appear anywhere in it.\n- **Recording traces in the status bar:**\n  - Red recording chip at x≈0.12-0.21, plus the recorder's bracket icon at x≈0.22-0.26. Visible 0-11s, 32-71s and 79-86s.\n  - At 8-10s the app's pin icon sits between them (x≈0.225-0.25). Use two separate boxes there so the pin stays visible.\n  - A red screen-share/cast icon on the right at x≈0.70-0.745. It is at y 0-0.04 on app screens and moves to y≈0.035-0.07 when the shade is open.\n- **Recorder notification in the shade:** visible 11-32s and 86-87.1s. Its box moves with the expand/collapse and reply-field states; separate time ranges are listed in the privacy array.\n- **No status bar in the camera:** none of these traces show during the camera frames (71-79s).\n- **Not a privacy issue:**\n  - Touch indicator dots appear on every tap.\n  - A green camera-in-use dot shows at 72-73s.\n  - The DND pill '방해 금지 모드가 켜져 있습니다.' shows in the shade.\n  - Faint bleed-through writing on the notebook paper is illegible.\n\nCaveat: in the shade frames, the yellow labels cover the top-left of the shade header (the clock area). Nothing private is expected there, but check the source at 11-31s."
+ },
+ "analyze:C": {
+  "scenes": [
+   {
+    "start": 0,
+    "end": 2,
+    "what": "Android home screen (night-sky wallpaper, dock: phone/camera/browser/messages). The NotiMemo app icon (purple pin) sits in the center. It is tapped just after 0s, and the 1s frame shows the app-launch zoom animation with the app UI scaling up from the icon.",
+    "feature": "App launch",
+    "value": "useful",
+    "note": "Good 1.5-2s opener. Status bar here also shows an extra screen-recorder icon right of the red pill (only during 0-3s)."
+   },
+   {
+    "start": 2,
+    "end": 4,
+    "what": "App main screen, idle: header '알림메모' + ☰, title '지금 기억해야 할 것은 무엇인가요?', subtitle '메모를 알림창에 고정해 언제든지 확인하세요.', empty '새 메모' box with placeholder '기억해야 할 것을 입력하세요...', buttons '알림 고정하기' (gradient) and '알림 지우기' (disabled), '\"Don't forget\"' tagline at the bottom. ☰ is tapped at about 3.5s.",
+    "feature": "Main screen / memo input",
+    "value": "filler",
+    "note": "About 1.5s of idle establishing shot. Trim to about 1s."
+   },
+   {
+    "start": 4,
+    "end": 6,
+    "what": "Side drawer open: '메모 입력' (AI 자동 정리, 사진으로 메모 가져오기), '예약' (예약 생성, 예약 목록 badge 1), '기록' (알림 내역 badge 3), 설정, 사용 방법. At about 5.5s '사용 방법' is tapped.",
+    "feature": "Navigation drawer / 사용 방법 (tutorial entry)",
+    "value": "useful",
+    "note": "Static for about 1.5s. 1s is enough. Tutorial step 5/6 shows this same menu again."
+   },
+   {
+    "start": 6,
+    "end": 7,
+    "what": "Tutorial 1/6, '여기에 메모를 적어요': '떠오르는 일을 적어 두세요. 사진 속 글자를 불러와 적을 수도 있어요.' The memo box is spotlighted and prefilled with the sample '금요일 오후 3시 치과 예약 꼭 가기' (✨ and clock buttons visible). Buttons: 다음, 건너뛰기.",
+    "feature": "Onboarding tutorial (사용 방법)",
+    "value": "useful",
+    "note": "Each card is on screen only about 1s, too short to read. Hold or freeze about 2s per card if used, or use it as a feature-overview montage."
+   },
+   {
+    "start": 7,
+    "end": 8,
+    "what": "Tutorial transition frame: dimmed screen with no card (between 1/6 and 2/6).",
+    "feature": "Onboarding tutorial",
+    "value": "cut",
+    "note": "Dead transition frame."
+   },
+   {
+    "start": 8,
+    "end": 9,
+    "what": "Tutorial 2/6, '알림창에 고정해요': '[알림 고정하기]를 누르면 메모가 알림창에 남아서 언제든 확인할 수 있어요.' The '알림 고정하기' button is spotlighted. Buttons 이전/다음.",
+    "feature": "Onboarding: pin memo to notification",
+    "value": "useful",
+    "note": "About 1s, too short to read."
+   },
+   {
+    "start": 9,
+    "end": 11,
+    "what": "Tutorial 3/6, 'AI가 자동으로 정리해줘요': '✨를 누르면 분류·우선순위·메모 요약과 일정 시각까지 찾아 줘요.' At 9s the card is still sliding in (lower position). At 10s it has settled above the memo box and the ✨ button is ring-highlighted.",
+    "feature": "Onboarding: AI 자동 정리",
+    "value": "useful",
+    "note": "9s is a mid-animation frame. 10s is the clean frame."
+   },
+   {
+    "start": 11,
+    "end": 13,
+    "what": "Tutorial 4/6, '원하는 시각에 알려 줘요': '🕑로 시각을 정하면 그때 알림창에 고정돼요. AI가 생각 후 예약 추천도 해줘요.' The clock button is ring-highlighted. At 12s a tap indicator lands on 다음.",
+    "feature": "Onboarding: 예약 (scheduled pin)",
+    "value": "useful",
+    "note": "Show-taps circles are visible (developer 'show taps' is on). That is fine for a demo."
+   },
+   {
+    "start": 13,
+    "end": 14,
+    "what": "Tutorial 5/6, '더 많은 기능은 ☰ 메뉴에 있어요': '사진으로 메모 가져오기, 예약 목록, 알림 내역, 설정을 이 메뉴에서 열 수 있어요.' The drawer is shown open behind the card.",
+    "feature": "Onboarding: menu features",
+    "value": "useful",
+    "note": "About 1s."
+   },
+   {
+    "start": 14,
+    "end": 15,
+    "what": "Tutorial transition frame: drawer closed, screen dimmed, no card.",
+    "feature": "Onboarding tutorial",
+    "value": "cut",
+    "note": "Dead transition frame."
+   },
+   {
+    "start": 15,
+    "end": 16,
+    "what": "Tutorial 6/6, '알림창에서 바로 고치고 지워요': '앱을 열지 않아도 알림에서 [수정]하거나 [지우기]로 정리할 수 있어요.' A mock notification card shows the pin icon, '오후 3시 치과 예약' and buttons '✎ 수정' / '✕ 지우기'. The '시작하기' button is tapped.",
+    "feature": "Onboarding: edit/clear from notification",
+    "value": "useful",
+    "note": "This is the only place in video C where the notification edit/clear feature appears (mock card). Worth holding about 2s if the real notification shade is not shown from another clip."
+   },
+   {
+    "start": 16,
+    "end": 18,
+    "what": "The tutorial closes and the memo input becomes focused: the keyboard pops up (16s) and the cursor blinks in the empty box (17s).",
+    "feature": "Main screen",
+    "value": "cut",
+    "note": "Awkward unintended auto-focus and keyboard. At 18s the keyboard is gone again."
+   },
+   {
+    "start": 18,
+    "end": 19,
+    "what": "Main screen idle with the keyboard dismissed. ☰ is tapped at about 18.5s.",
+    "feature": "Main screen",
+    "value": "filler",
+    "note": "Transition only."
+   },
+   {
+    "start": 19,
+    "end": 20,
+    "what": "Drawer open (예약 목록 badge 1, 알림 내역 badge 3). '알림 내역' is tapped.",
+    "feature": "Navigation to 알림 내역",
+    "value": "filler",
+    "note": "Keep about 0.5s if you want to show where the history lives."
+   },
+   {
+    "start": 20,
+    "end": 22,
+    "what": "'알림 내역' bottom sheet opens: badge 3, red '전체삭제' button. Filter rows: 분류 [전체 3 ✓, 약속 2, 기타 1], 우선순위 [전체 ✓, 높음 2, 보통 1]. Items, each with re-pin ↻ and ✕: '낼 아침 7시 전화' (약속 · 우선순위 높음, 오후 6:36), '낼 아침 9시 전화하기' (약속 · 우선순위 높음, 오후 6:35), 'Notimemo-1' (기타 · 우선순위 보통, 오후 6:34).",
+    "feature": "알림 내역 (history) with category/priority filters",
+    "value": "useful",
+    "note": "The history data looks like test data: the colloquial '낼' spelling and the dev-like 'Notimemo-1' entry. Mildly awkward."
+   },
+   {
+    "start": 22,
+    "end": 24,
+    "what": "'약속 2' is tapped (just before 22s). The list filters to the two 약속 items and the sheet shrinks and slides lower. At 23s the same state shows with a stray tap indicator right of the 기타 chip.",
+    "feature": "알림 내역: category filter",
+    "value": "useful",
+    "note": "23s is basically a duplicate frame."
+   },
+   {
+    "start": 24,
+    "end": 25,
+    "what": "Priority '높음 2' is tapped: 약속 + 높음 still shows the same two items.",
+    "feature": "알림 내역: priority filter",
+    "value": "useful",
+    "note": ""
+   },
+   {
+    "start": 25,
+    "end": 26,
+    "what": "Priority '보통 1' is tapped while 약속 is selected: empty state '조건에 맞는 메모가 없어요' with a '필터 해제' button.",
+    "feature": "알림 내역: combined filters / empty state",
+    "value": "useful",
+    "note": "Nice quick proof that the filters combine."
+   },
+   {
+    "start": 26,
+    "end": 27,
+    "what": "Category '기타 1' is tapped (with 보통 1). The list shows only 'Notimemo-1' (기타 · 우선순위 보통, 오후 6:34).",
+    "feature": "알림 내역: combined filters",
+    "value": "useful",
+    "note": ""
+   },
+   {
+    "start": 27,
+    "end": 34,
+    "what": "Sheet sits unchanged on the 기타 + 보통 filter showing 'Notimemo-1'. Nothing happens.",
+    "feature": "알림 내역",
+    "value": "cut",
+    "note": "7s of dead time."
+   },
+   {
+    "start": 34,
+    "end": 36,
+    "what": "The sheet is dismissed and the memo input gets focused: the keyboard pops up (34s), then is dismissed, back to the plain main screen (35s).",
+    "feature": "Main screen",
+    "value": "cut",
+    "note": "Unintended keyboard pop, same awkward auto-focus as at 16s."
+   },
+   {
+    "start": 36,
+    "end": 41,
+    "what": "☰ drawer opened at 36s and sits static through 40s (예약 목록 1, 알림 내역 3). '설정' is tapped at about 40.5s.",
+    "feature": "Navigation to 설정",
+    "value": "cut",
+    "note": "About 4.5s of idle. Keep at most about 0.5s (around 40.3-41) as the 설정 tap transition."
+   },
+   {
+    "start": 41,
+    "end": 42,
+    "what": "설정 screen (top of page): 테마 [시스템 기본 ✓ / 라이트 / 다크]; 진동: 알림 진동 ON ('알림을 고정하거나 예약을 걸거나 다시 게시할 때 진동해요.'); AI 기능 켜기: 'AI로 메모 정리하기' ON ('✨ 버튼을 누르면 메모가 외부 서버(Cloudflare)로 전송돼요.'); AI 설정: '자동 분류 시스템' ON ('메모의 카테고리·우선순위·요약을 자동으로 정리해요.'), '여유 시간' ('AI가 찾은 일정 시각보다 30분 전에 알려요.') with chips 안 함 / 5분 전 / 10분 전 / 30분 전 ✓ / 1시간 전 / 2시간 전 / 직접 설정.",
+    "feature": "설정 overview",
+    "value": "useful",
+    "note": "No email is visible at this scroll position."
+   },
+   {
+    "start": 42,
+    "end": 44,
+    "what": "'라이트' is tapped. 42s is a mid-transition frame: the whole screen is a dimmed grey light version. 43s shows the full light theme with 라이트 ✓.",
+    "feature": "설정: theme (light)",
+    "value": "useful",
+    "note": "The 42s grey frame is a brief flash. Fine at real speed, but avoid freezing on it."
+   },
+   {
+    "start": 44,
+    "end": 45,
+    "what": "'다크' is tapped. Dark theme, 다크 ✓.",
+    "feature": "설정: theme (dark)",
+    "value": "useful",
+    "note": ""
+   },
+   {
+    "start": 45,
+    "end": 47,
+    "what": "'시스템 기본' is tapped (tap indicator on its icon at 45s). 시스템 기본 ✓, dark appearance. 46s is idle.",
+    "feature": "설정: theme (system)",
+    "value": "useful",
+    "note": "46s is idle and can be trimmed."
+   },
+   {
+    "start": 47,
+    "end": 48,
+    "what": "The 'AI로 메모 정리하기' toggle is switched OFF (tapped between 46 and 47). Its subtitle changes to '꺼져 있어요. 인터넷 없이 되는 기본 분석을 써요.' The whole AI 설정 section (자동 분류 시스템, 여유 시간) collapses, which pulls the '앱 정보' card into view: 버전 3.0.0 / '업데이트 확인', 문의 rlaalsgh7406@gmail.com, 업데이트 2026.10.03, and the footer 'made by Mino7406, VVYUNS'.",
+    "feature": "설정: AI on/off (offline basic analysis fallback)",
+    "value": "useful",
+    "note": "PRIVACY: the personal email is visible here (blur from about 46.5 to 48.95)."
+   },
+   {
+    "start": 48,
+    "end": 49,
+    "what": "The toggle is tapped again to turn AI back ON (pressed state visible). The 앱 정보 card and email are still visible.",
+    "feature": "설정: AI toggle",
+    "value": "useful",
+    "note": "PRIVACY: email visible."
+   },
+   {
+    "start": 49,
+    "end": 50,
+    "what": "AI consent dialog 'AI 자동 정리': '메모를 분류하고 요약하려면 메모 내용이 외부 서버로 전송돼요.' Bullets: 전송되는 것: 메모 글자(최대 500자)와 이 앱 설치를 구분하는 무작위 번호; 처리 서버: Cloudflare (AI 학습에 쓰이지 않고 저장되지 않아요); 비밀번호·계좌번호 같은 민감한 내용은 넣지 마세요; 하루에 기기당 20회까지 사용할 수 있어요; 설정에서 언제든 끌 수 있어요. Then '동의하지 않아도 인터넷 없이 되는 기본 분석은 쓸 수 있어요.', a VPN note, and buttons 'AI 없이 사용' / '동의하고 사용'. '동의하고 사용' is tapped at about 49.5s.",
+    "feature": "AI privacy consent (Cloudflare server)",
+    "value": "highlight",
+    "note": "Good engineering and privacy talking point, but it is on screen only about 1s. Freeze-frame for 2-3s if used. The dialog fully covers the email row, so no blur is needed on this frame. Do NOT put the email blur box here, because it would land on the dialog buttons."
+   },
+   {
+    "start": 50,
+    "end": 51,
+    "what": "AI is back ON. The AI 설정 section reappears (자동 분류 시스템 ON, 여유 시간 30분 전) and pushes 앱 정보 below the fold. The page is at the top.",
+    "feature": "설정: AI re-enabled",
+    "value": "filler",
+    "note": "Email is off-screen in this frame, but it starts scrolling in from the bottom at about 50.5s."
+   },
+   {
+    "start": 51,
+    "end": 53,
+    "what": "User scrolls down to the bottom of 설정 (51s and 52s are intermediate scroll positions). The 앱 정보 card with the email scrolls up from the bottom edge.",
+    "feature": "설정: scroll",
+    "value": "filler",
+    "note": "Scroll transition. PRIVACY: the email is moving here, see the separate boxes."
+   },
+   {
+    "start": 53,
+    "end": 55,
+    "what": "Bottom of 설정, 여유 시간 = 30분 전 (53s has a touch indicator right of the description). At 54s '10분 전' is tapped (pressed highlight). At 55s 10분 전 is selected and the description updates to 'AI가 찾은 일정 시각보다 10분 전에 알려요.'",
+    "feature": "설정: 여유 시간 (lead time)",
+    "value": "useful",
+    "note": "PRIVACY: email visible at the bottom."
+   },
+   {
+    "start": 55,
+    "end": 57,
+    "what": "'5분 전' is tapped. At 56s 5분 전 is selected and the description reads '...5분 전에 알려요.'",
+    "feature": "설정: 여유 시간 = 5분 전",
+    "value": "highlight",
+    "note": "This setting pays off later: the AI result at 77s says '알림은 5분 전(...오전 8시 55분)'. Cut straight from about 56.8 to 64.0. The state matches (5분 전) and the back-to-home is hidden."
+   },
+   {
+    "start": 57,
+    "end": 59,
+    "what": "Idle on 5분 전.",
+    "feature": "설정: 여유 시간",
+    "value": "cut",
+    "note": "Dead time (2s)."
+   },
+   {
+    "start": 59,
+    "end": 61,
+    "what": "'30분 전' is tapped (tap indicator at 59s). At 60s 30분 전 is selected ('...30분 전에 알려요.'). At 61s the page nudges up about 1% (slight scroll).",
+    "feature": "설정: 여유 시간",
+    "value": "cut",
+    "note": "Redundant back-and-forth."
+   },
+   {
+    "start": 61,
+    "end": 63,
+    "what": "Idle on 30분 전.",
+    "feature": "설정: 여유 시간",
+    "value": "cut",
+    "note": "Dead time."
+   },
+   {
+    "start": 63,
+    "end": 64,
+    "what": "'5분 전' is selected again (final setting = 5분 전, '...5분 전에 알려요.'). The user then navigates back to the main screen at about 63.5s.",
+    "feature": "설정: 여유 시간 final",
+    "value": "filler",
+    "note": "Can be skipped entirely if you cut from 56.8 to 64.0. PRIVACY: email visible until the page leaves the screen."
+   },
+   {
+    "start": 64,
+    "end": 65,
+    "what": "Main screen, memo input focused, keyboard up, empty box with cursor.",
+    "feature": "Memo input",
+    "value": "useful",
+    "note": "Start of the core demo (AI scheduling flow)."
+   },
+   {
+    "start": 65,
+    "end": 68,
+    "what": "Typing on the Korean keyboard: '내일' (65s, key preview popup 'ㄹ'), then '내일 9시' (66s, mid-composition '9스'), then '내일 9시 ' with a trailing space (67s). The ✨ AI and clock buttons appear in the box once text exists. A red ✕ clear button sits top-right.",
+    "feature": "Memo input",
+    "value": "useful",
+    "note": "Typing could be sped up about 2x."
+   },
+   {
+    "start": 68,
+    "end": 71,
+    "what": "Pause: the text stays '내일 9시 ' with a blinking cursor (68, 69, 70s). Nothing typed.",
+    "feature": "Memo input",
+    "value": "cut",
+    "note": "About 3s of hesitation. Cut or jump-cut."
+   },
+   {
+    "start": 71,
+    "end": 74,
+    "what": "'전화' is typed, giving '내일 9시 전화' (71s, '화' still underlined as composing). 72-73s idle with the same text.",
+    "feature": "Memo input",
+    "value": "useful",
+    "note": "72-73 is idle and can be trimmed or sped up."
+   },
+   {
+    "start": 74,
+    "end": 75,
+    "what": "The ✨ (AI 자동 정리) button is tapped (tap indicator on ✨ at 74s).",
+    "feature": "AI 자동 정리 trigger",
+    "value": "highlight",
+    "note": ""
+   },
+   {
+    "start": 75,
+    "end": 77,
+    "what": "AI analyzing: the ✨ button turns into a spinner and a progress bar runs under the memo box (75s). Composition is committed ('내일 9시 전화'). At 76s the spinner finishes (✨ restored) with the keyboard still up.",
+    "feature": "AI 자동 정리 (Cloudflare server round-trip)",
+    "value": "highlight",
+    "note": "Real latency is about 2s. Keep it at real speed to show it is live."
+   },
+   {
+    "start": 77,
+    "end": 79,
+    "what": "'자동 정리' bottom sheet with an 'AI 분석' badge. Chips: '약속', '우선순위 높음' (red). '예약 시각 제안': '10월 6일 (화) 오전 9시', then '알림은 5분 전(10월 6일 (화) 오전 8시 55분)으로 맞춰 드려요. 다음 화면에서 고칠 수 있어요.' Buttons: '적용하고 예약 시각 확인' (gradient) / '적용만 하기'. '적용하고 예약 시각 확인' is tapped at about 78.5s.",
+    "feature": "AI result: category, priority, reservation-time suggestion with lead time",
+    "value": "highlight",
+    "note": "Key money shot. '내일' is correctly resolved to 10/6 (recording date 10/5, about 6:48 PM), and the 5-minute lead time from settings is applied. Hold about 2.5s for legibility. The keyboard dismisses as the sheet opens."
+   },
+   {
+    "start": 79,
+    "end": 82,
+    "what": "'언제 고정할까요?' scheduling sheet. Quick chips: 5분 뒤 / 30분 뒤 / 1시간 뒤 / 오늘 저녁 7시 / (more, horizontally scrollable). Date list: 10월 5일 (월) / 10월 6일 (화) highlighted / 10월 7일 (수). 오전 ✓ / 오후. Time spinner 8 : 55 with ▲▼. Button '10월 6일 (화) 오전 8:55에 고정'. 80-81s are idle.",
+    "feature": "예약 (scheduled pin) time picker, prefilled by AI",
+    "value": "highlight",
+    "note": "80-81 is about 1.5s of idle and can be trimmed."
+   },
+   {
+    "start": 82,
+    "end": 83,
+    "what": "Tap on '10월 6일 (화) 오전 8:55에 고정' (tap indicator on the button).",
+    "feature": "예약 confirm",
+    "value": "highlight",
+    "note": ""
+   },
+   {
+    "start": 83,
+    "end": 85,
+    "what": "Back on the main screen with the memo box cleared. A green toast reads '✓ 10/6 오전 8:55에 고정되도록 예약했어요.' At 83s the keyboard has popped up again and the toast sits above it. At 84s the keyboard is dismissed and the toast is at the bottom of the screen.",
+    "feature": "예약 success confirmation",
+    "value": "highlight",
+    "note": "The keyboard re-pop at 83s is slightly janky. Consider starting at about 83.8 (clean frame with toast at bottom)."
+   },
+   {
+    "start": 85,
+    "end": 89,
+    "what": "Main screen idle (toast gone).",
+    "feature": "Main screen",
+    "value": "cut",
+    "note": "4s of dead time."
+   },
+   {
+    "start": 89,
+    "end": 90,
+    "what": "Drawer open with updated badges: 예약 목록 2 (was 1), 알림 내역 4 (was 3). '예약 목록' is tapped.",
+    "feature": "Navigation to 예약 목록",
+    "value": "useful",
+    "note": "Updated badge counts are a nice continuity detail. Keep about 0.7s."
+   },
+   {
+    "start": 90,
+    "end": 92,
+    "what": "'예약 목록' bottom sheet: badge 2, '전체삭제'. 분류 [전체 2 ✓, 약속 2]. Items (clock icon, ✕ to cancel): '낼 아침 7시 전화' (약속 · 우선순위 높음, 10/6 오전 6:30) and the new '내일 9시 전화' (약속 · 우선순위 높음, 10/6 오전 8:55).",
+    "feature": "예약 목록 (scheduled list)",
+    "value": "useful",
+    "note": "Proves the reservation was saved. Good closing shot."
+   },
+   {
+    "start": 92,
+    "end": 97,
+    "what": "예약 목록 sheet static, nothing happens.",
+    "feature": "예약 목록",
+    "value": "cut",
+    "note": "5s of dead time."
+   },
+   {
+    "start": 97,
+    "end": 99,
+    "what": "The sheet is dismissed and the memo input auto-focuses: the keyboard pops up (97s), then is dismissed (98s), leaving the plain main screen.",
+    "feature": "Main screen",
+    "value": "cut",
+    "note": "Same awkward keyboard pop as at 16s and 34s."
+   },
+   {
+    "start": 99,
+    "end": 101,
+    "what": "A system floating quick-control panel appears over the app: brightness slider, volume slider, media prev/play/next, ▲▼, and round buttons for Wi-Fi, screen recorder, screenshot and an assistant icon. The user is stopping the recording. The video ends at about 101s.",
+    "feature": "None (system UI, end of recording)",
+    "value": "cut",
+    "note": "End-of-recording artifact. Cut."
+   }
+  ],
+  "privacy": [
+   {
+    "start": 0,
+    "end": 101,
+    "what": "Red screen-recording indicator pill in the status bar, right of the clock (6:46-6:48). Present on every frame, in both dark and light themes.",
+    "box": "x=0.10, y=0.00, w=0.13, h=0.04 (static; pill measured at x 0.119-0.206, y 0.009-0.031). Simplest alternative: mask or crop the entire status-bar strip x=0.00, y=0.00, w=1.00, h=0.04 for the whole video."
+   },
+   {
+    "start": 0,
+    "end": 3,
+    "what": "Extra screen-recorder or capture icon (dashed-corner camera glyph) immediately right of the red pill. Only visible 0-2s (gone by 3s).",
+    "box": "x=0.21, y=0.00, w=0.07, h=0.04 (static; measured x 0.219-0.259). Or widen the red-pill box to x=0.10, w=0.18 for 0-3s."
+   },
+   {
+    "start": 0,
+    "end": 101,
+    "what": "Red/orange cast or screen-projection icon on the right side of the status bar (left of the mute, Wi-Fi, signal and battery icons). It indicates active screen capture and is present on every frame.",
+    "box": "x=0.69, y=0.00, w=0.07, h=0.04 (static; measured x 0.703-0.743, y 0.013-0.028). Covered automatically if the full status-bar strip is masked."
+   },
+   {
+    "start": 46.5,
+    "end": 48.95,
+    "what": "Personal email 'rlaalsgh7406@gmail.com' in 설정 > 앱 정보 > 문의. It becomes visible when the AI toggle is switched off (between 46 and 47s), because the AI 설정 section collapses. It stays until the consent dialog covers it at about 49s.",
+    "box": "x=0.20, y=0.735, w=0.48, h=0.06 (static; text measured x 0.233-0.637, y 0.756-0.773 at 47s and 48s)"
+   },
+   {
+    "start": 49,
+    "end": 50,
+    "what": "Email is hidden under the 'AI 자동 정리' consent dialog. NO blur on this frame: the box would cover the dialog's 'AI 없이 사용'/'동의하고 사용' buttons at y about 0.75. If sub-second review shows the email flashing as the dialog fades out (about 49.6-49.9s, before the AI 설정 section re-expands), reuse the 46.5-48.95 box for just those frames.",
+    "box": "x=0.20, y=0.735, w=0.48, h=0.06 (conditional only, see note)"
+   },
+   {
+    "start": 50.3,
+    "end": 52,
+    "what": "Email scrolling into view from the bottom edge as the user scrolls 설정 down (off-screen at 50s; text center y 0.957 at 51s, 0.928 at 52s).",
+    "box": "x=0.20, y=0.90, w=0.48, h=0.10 (covers y 0.90-1.00; moving region)"
+   },
+   {
+    "start": 52,
+    "end": 53,
+    "what": "Email still moving up fast during the scroll (center y 0.928 at 52s to 0.834 at 53s).",
+    "box": "x=0.20, y=0.80, w=0.48, h=0.17 (covers y 0.80-0.97 for the whole second; or keyframe from y=0.905,h=0.05 at 52.0 to y=0.81,h=0.05 at 53.0)"
+   },
+   {
+    "start": 53,
+    "end": 61,
+    "what": "Email at rest at the bottom of 설정 while 여유 시간 is changed (30→10→5→30). Text center y 0.834 (0.826-0.843).",
+    "box": "x=0.20, y=0.80, w=0.48, h=0.06 (static)"
+   },
+   {
+    "start": 61,
+    "end": 64,
+    "what": "Email after a slight upward nudge at 61s. Text center y 0.824 (0.816-0.833), visible until the back navigation to the main screen at about 63.5s.",
+    "box": "x=0.20, y=0.80, w=0.48, h=0.06 (same box as 53-61 still covers it). During the back-transition slide (about 63.5-64.0), widen to x=0.00, y=0.78, w=1.00, h=0.10 in case the page slides horizontally."
+   },
+   {
+    "start": 47,
+    "end": 49,
+    "what": "OPTIONAL: footer credit 'made by Mino7406, VVYUNS'. 'Mino7406' is the developer's handle and shares '7406' with the email. Not required by the brief; blur only if you want full anonymity.",
+    "box": "x=0.28, y=0.88, w=0.44, h=0.04 (static at 47-48s; text at y about 0.899)"
+   },
+   {
+    "start": 53,
+    "end": 64,
+    "what": "OPTIONAL: same 'made by Mino7406, VVYUNS' footer at the bottom of 설정 (text y about 0.973 at 53-60s, 0.964 at 61-63s; scrolls in from below at 52-53s).",
+    "box": "x=0.28, y=0.95, w=0.44, h=0.04 (static 53-64)"
+   },
+   {
+    "start": 99,
+    "end": 101,
+    "what": "System floating quick-control panel used to stop the recording (includes a screen-recorder button). No personal data, but it is recording UI. Cut rather than blur.",
+    "box": "x=0.29, y=0.36, w=0.64, h=0.29 (static at 99-100s)"
+   }
+  ],
+  "summary": "Video C timeline (101s, 720x1560, recorded about 6:46-6:48 PM on 10/5). Convention: start = first labeled frame showing the state; end = first labeled frame where the next state appears (end-exclusive). The real change happens somewhere between end-1 and end. Tap indicators (show-taps circles) are visible throughout.\n\nWhat C contains, in order:\n- 0-2: app launch from the home screen.\n- 4-6: drawer, then '사용 방법' is tapped.\n- 6-16: 6-step onboarding tutorial. Cards: 메모 적기, 알림 고정, ✨ AI 정리, 🕑 예약, ☰ 메뉴, and 알림창 수정/지우기 with a mock notification '오후 3시 치과 예약'.\n- 20-27: 알림 내역 sheet. 3 items: '낼 아침 7시 전화', '낼 아침 9시 전화하기', 'Notimemo-1'. Filter demo: 약속 → +높음 → 약속+보통 gives the empty state '조건에 맞는 메모가 없어요', → 기타+보통.\n- 41-47: 설정 theme switch: 시스템 기본 → 라이트 (42s grey transition frame) → 다크 → 시스템 기본.\n- 47-50: 'AI로 메모 정리하기' OFF ('인터넷 없이 되는 기본 분석') → ON → AI consent dialog (Cloudflare, 500자, 하루 20회). Only about 1s on screen.\n- 53-56: 여유 시간 30→10→5분 전. It flips back to 30 at 60s and returns to 5분 전 at 63s.\n- 64-74: typing '내일 9시 전화'.\n- 74-77: ✨ tap, then AI analysis for about 2s.\n- 77-79: '자동 정리' result: 약속 / 우선순위 높음 / 예약 시각 제안 10월 6일 (화) 오전 9시 / 알림은 5분 전 8:55.\n- 79-83: '언제 고정할까요?' picker prefilled with 10/6 오전 8:55, then the 고정 button is tapped.\n- 83-85: toast '10/6 오전 8:55에 고정되도록 예약했어요.'\n- 89-92: drawer badges now 예약 목록 2 / 알림 내역 4, then the 예약 목록 sheet shows the new '내일 9시 전화 10/6 오전 8:55'.\n\nNot in C: the real notification shade and pinned notification, photo OCR, and the widget. Because the shade is never opened, the '녹화를 중지하려면 여기를 누르세요' notification does not appear in C.\n\nDead time and cuts:\n- 7-8 and 14-15: tutorial transitions.\n- 16-19: keyboard pops up, then down.\n- 27-34: static filter sheet, 7s.\n- 34-36: keyboard pops up, then down.\n- 36-40.5: drawer idle.\n- 57-63: redundant lead-time flip-flopping.\n- 68-71: typing pause.\n- 72-73: idle.\n- 80-81.5: idle in the picker.\n- 85-89: idle main screen.\n- 92-97: static 예약 목록 sheet.\n- 97-99: keyboard pops up, then down.\n- 99-101: system quick panel used to stop recording.\nThe keyboard auto-pops after closing a sheet or dialog at 16, 34, 83 and 97s, which looks janky.\n\nSpeed-ups:\n- Typing 64-74 can run at about 2x, after removing the 68-71 pause.\n- Tutorial cards are about 1s each, too short to read. Hold about 2s each if used.\n- Freeze the consent dialog (49s) for 2-3s if it is shown.\n\nAwkward spots:\n- The 42s grey theme-transition frame.\n- History contains test-looking entries ('Notimemo-1', colloquial '낼').\n- 'Notimemo-1' is a dev-like name.\n- There are no OCR misreads in C (OCR is not used).\n\nSuggested keep list (about 50-55s):\n- 0.0-2.5\n- 3.5-5.6 (optional)\n- 6.0-7.0, 8.0-14.0, 15.0-16.0 (tutorial, held longer)\n- 19.5-27.0\n- 40.4-50.0 (blur the email 46.5-48.95; freeze about 49.3)\n- 52.8-56.8, with the email blur. Then hard-cut to 64.0; the 5분 전 state matches.\n- 64.0-68.0 at 2x\n- 70.6-74.0 at 2x\n- 74.0-80.2\n- 81.6-85.0\n- 89.0-92.0\n\nPrivacy:\n- Red recording pill: x=0.10, y=0.00, w=0.13, h=0.04 for the whole video.\n- Screen-recorder icon: 0-3s only.\n- Right-side red cast/projection icon: x=0.69, w=0.07, for the whole video.\n- Or mask the whole status-bar strip, h=0.04.\n- Email boxes (x=0.20, w=0.48):\n  - 46.5-48.95: y=0.735, h=0.06.\n  - 49-50: none; the dialog covers it.\n  - 50.3-52: y=0.90, h=0.10 (scrolling in).\n  - 52-53: y=0.80, h=0.17 (moving).\n  - 53-64: y=0.80, h=0.06. Go full-width for 63.5-64 during the back transition.\n- 'made by Mino7406' footer blur is optional.\n- Measurements were taken by pixel-scanning the frame sheets (cell 270x586 = 0.375 scale of the source)."
+ },
+ "analyze:D": {
+  "scenes": [
+   {
+    "start": 0,
+    "end": 2,
+    "what": "One UI home screen (night-sky wallpaper, dock: phone/camera/internet/messages). In the middle: the NotiMemo purple pin app icon and the NotiMemo home-screen widget. The widget has a '메모를 입력하세요...' input bar, tabs '예약' (selected, purple) / '내역', and two scheduled items: '약속 · 우선순위 높음 / 낼 아침 7시 전화 / 10월 6일 (화) 오전 6:30' and '약속 · 우선순위 높음 / 내일 9시 전화 / 10월 6일 (화) 오전 8:55'. Frames 0s and 1s are identical, with no interaction. Between 1s and 2s the user taps the widget's '메모를 입력하세요...' bar (the touch dot is still visible at about x0.71, y0.59 in the 2s frame).",
+    "feature": "Home-screen widget (예약 tab with AI-categorized scheduled memos)",
+    "value": "useful",
+    "note": "Static establishing shot. 0–1s is idle; trim to about 1.0s, for example 1.0–2.0, so the tap lands quickly. This is a good frame for a caption like '홈 화면 위젯'. The status bar shows the recorder pill plus an extra screen-capture icon until about 3s (see privacy)."
+   },
+   {
+    "start": 2,
+    "end": 3,
+    "what": "The '새 메모' quick-input dialog opens as an overlay on top of the home screen (the widget is partly visible behind it). It shows placeholder '기억해야 할 것을 입력하세요...' with a blinking cursor and two buttons, '취소' and '알림 고정하기' (purple gradient). The dialog is centred at about y0.48–0.71. The keyboard is not shown yet.",
+    "feature": "Widget quick memo input: write and pin a memo straight from the home screen without opening the app",
+    "value": "useful",
+    "note": "Short transition frame that shows the dialog appearing over the home screen. Keep it, about 0.5–1s."
+   },
+   {
+    "start": 3,
+    "end": 8,
+    "what": "The Samsung Korean keyboard slides up and the dialog moves to the top (about y0.18–0.42). The user types the memo. 3s: empty field, pressing ㅇ (key popup 'ㅇ'). 4s: '위제' with ㅅ being added (popup 'ㅅ'), becoming '위젯'. 5s: '위젯 회' composing '활' (popup 'ㄹ'). 6s: '위젯 활용 ' (trailing space). 7s: '위젯 활용 테스트' finished. Touch-indicator dots show on the keys.",
+    "feature": "Typing a memo in the widget quick-input dialog",
+    "value": "useful",
+    "note": "About 4–5s of plain typing. Speed it up 2–3x, or jump-cut from 3s to 7s. No typos and no autocorrect problems. Final text is '위젯 활용 테스트'."
+   },
+   {
+    "start": 8,
+    "end": 9,
+    "what": "The text '위젯 활용 테스트' is finished and unchanged from 7s, with the keyboard still open. The user pauses, then taps '알림 고정하기' between 8s and 9s.",
+    "feature": "Pinning the memo (알림 고정하기 button)",
+    "value": "filler",
+    "note": "Dead time of about 1s before the tap. Keep only the last ~0.3–0.5s before the tap, or merge it into the sped-up typing so the button press reads clearly."
+   },
+   {
+    "start": 9,
+    "end": 11,
+    "what": "The dialog and keyboard close and the home screen returns. A system toast '알림이 고정되었습니다!' with the NotiMemo pin icon appears. At 9s it sits mid-screen over the widget (about y0.63–0.68) because the keyboard was just open. At 10s it has jumped down to just above the dock (about y0.86–0.90). The NotiMemo pin icon now shows in the status bar next to the clock (x≈0.23). The widget still shows the same two 예약 items.",
+    "feature": "Confirmation that the memo is pinned as a persistent notification (toast + status-bar pin icon)",
+    "value": "highlight",
+    "note": "Awkward: it is a single Toast from QuickInputActivity, but it visibly jumps from mid-screen to the bottom as the IME closes. Consider using only 9.5–10.8 or zooming in on the toast. The widget does not visibly change because the new memo goes to 내역, not 예약. Don't caption it as if the widget updated. The status-bar pin icon is a nice cue, so do not blur it (it sits right next to the recorder pill)."
+   },
+   {
+    "start": 11,
+    "end": 12,
+    "what": "Transition: the user swipes down from the top to pull down the notification shade. The home screen blurs and dims, a touch dot is at about x0.39, y0.19, and the status bar blurs and starts moving down. No notification content is visible yet in this frame.",
+    "feature": "Opening the notification shade",
+    "value": "filler",
+    "note": "Pure transition. Keep about 0.3–0.5s or replace with a hard cut or crossfade to 12s. The recorder notification card slides in during this second, so either cut it or blur it (see privacy)."
+   },
+   {
+    "start": 12,
+    "end": 14,
+    "what": "The notification shade is fully open. Header: '6:51 10월 5일 월요일' and a pill '방해 금지 모드가 켜져 있습니다.' First notification: NotiMemo pin icon, '알림메모 · 오후 6:51' / '위젯 활용 테스트' with an expand chevron. Second notification: the Samsung screen recorder card '녹화를 중지하려면 여기를 누르세요. 오후 6:51' / timer '00:12' (00:13 at 13s) with the count '2'. Bottom buttons: '알림 설정' and '지우기'. Frames 12s and 13s are static apart from the recorder timer.",
+    "feature": "Core feature payoff: the memo typed in the widget is now pinned in the notification shade",
+    "value": "highlight",
+    "note": "Main payoff shot, so keep the full 2s and consider a zoom on the '알림메모 / 위젯 활용 테스트' card. The recorder notification sits directly below it and must be blurred or covered. A DND banner is visible (harmless). The shade closes somewhere between 13s and 14s; end the shot at about 13.5–13.9s to avoid the close animation."
+   },
+   {
+    "start": 14,
+    "end": 15.1,
+    "what": "The shade is closed and the home screen is back, identical to 10s without the toast: widget with 2 예약 items, pin icon in the status bar. No further interaction until the recording ends at 15.1s.",
+    "feature": "Return to home screen (end of recording)",
+    "value": "cut",
+    "note": "Dead tail. Cut it, or use at most ~0.5s as an outro or freeze-frame. Recorder pill still in the status bar."
+   }
+  ],
+  "privacy": [
+   {
+    "start": 0,
+    "end": 3,
+    "what": "Red screen-recording pill in the status bar, plus the extra screen-capture icon right next to it. That icon shows only in frames 0s–2s and is gone at 3s. The pill sits at pixels x0.119–0.196, y0.010–0.029; the icon at x0.218–0.245, y0.014–0.028.",
+    "box": "x=0.105, y=0.0, w=0.15, h=0.04 (static; covers pill + capture icon, leaves the clock '6:51' at x≈0.045–0.10 visible)"
+   },
+   {
+    "start": 3,
+    "end": 12,
+    "what": "Red screen-recording pill in the status bar (left of status bar, right of the clock). At 11s it is blurred/faint and shifting during the shade pull-down but still faintly red. From 9s the NotiMemo pin icon sits just right of it at x≈0.226–0.245; keep that visible.",
+    "box": "x=0.105, y=0.0, w=0.11, h=0.045 (static; right edge 0.215 stops before the NotiMemo pin icon)"
+   },
+   {
+    "start": 12,
+    "end": 13,
+    "what": "Not visible: the expanded shade hides the left status icons, so there is no recorder pill in frames 12s and 13s. Leaving the 3–12 box running through here only blurs an empty dark area and is harmless.",
+    "box": "none needed (optionally keep x=0.105, y=0.0, w=0.11, h=0.045 running continuously)"
+   },
+   {
+    "start": 13,
+    "end": 15.1,
+    "what": "Red screen-recording pill reappears in the status bar after the shade closes, at the same position as before. The NotiMemo pin icon at x≈0.23 should stay visible.",
+    "box": "x=0.105, y=0.0, w=0.11, h=0.045 (static)"
+   },
+   {
+    "start": 0,
+    "end": 11,
+    "what": "Red/orange cast-style screen-capture (screen-sharing) indicator icon in the right status-bar cluster, the 2nd icon after the DND minus icon. It is another recording giveaway; blurring it is optional but recommended. Measured at x0.703–0.744, y0.013–0.029.",
+    "box": "x=0.685, y=0.0, w=0.075, h=0.04 (static)"
+   },
+   {
+    "start": 11,
+    "end": 14,
+    "what": "The same red cast/screen-capture icon while the shade is being opened, open and closing. The right status cluster moves down: y≈0.034–0.047 at 11s and y≈0.046–0.061 in the open shade at 12–13s (x0.694–0.735).",
+    "box": "x=0.68, y=0.0, w=0.085, h=0.075 (one static box covering both the normal and the shade-header positions)"
+   },
+   {
+    "start": 14,
+    "end": 15.1,
+    "what": "Red cast/screen-capture icon back at its normal status-bar position.",
+    "box": "x=0.685, y=0.0, w=0.075, h=0.04 (static)"
+   },
+   {
+    "start": 12,
+    "end": 13.5,
+    "what": "Screen-recorder notification card in the open shade: red recorder icon, '녹화를 중지하려면 여기를 누르세요. 오후 6:51', timer '00:12'/'00:13', count '2'. Card measured at x0.03–0.96, y0.262–0.345. The NotiMemo card directly above it (y0.17–0.255) must stay visible.",
+    "box": "x=0.02, y=0.255, w=0.96, h=0.095 (static while the shade is fully open; top edge 0.255 does not touch the NotiMemo card)"
+   },
+   {
+    "start": 11,
+    "end": 12,
+    "what": "Recorder notification card sliding/fading in while the shade opens. It is not yet visible in the 11s frame but appears sometime before 12s, moving down into its final position. Best handled by hard-cutting from about 10.9s straight to 12.0s.",
+    "box": "if kept: x=0.02, y=0.15, w=0.96, h=0.21 (moving; would also cover the NotiMemo card while it slides) — recommended: cut this second instead"
+   },
+   {
+    "start": 13.5,
+    "end": 14,
+    "what": "Recorder notification card sliding up and out while the shade closes. Exact close start is between 13s and 14s (not sampled). Best handled by ending the shade shot at about 13.5s.",
+    "box": "if kept: x=0.02, y=0.0, w=0.96, h=0.36 (moving upward) — recommended: cut this half-second instead"
+   },
+   {
+    "start": 0,
+    "end": 15.1,
+    "what": "Personal email (rlaalsgh7406@gmail.com): not present anywhere in video D, because the settings/앱 정보 screen never appears. No email blur is needed for this clip.",
+    "box": "none"
+   }
+  ],
+  "summary": "I read both frame sheets and checked text and positions in zoomed crops and with pixel measurements. Video D (15.1s) shows the home-screen widget being used to pin a memo.\n\n- **0–2s:** idle home screen with the NotiMemo widget (예약 tab, 2 scheduled '약속 · 우선순위 높음' items). Between 1s and 2s the user taps the widget's '메모를 입력하세요...' bar.\n- **2–3s:** the '새 메모' overlay dialog opens over the home screen.\n- **3–8s:** the user types '위젯 활용 테스트' on the Samsung keyboard. It's clean with no typos; speed it up 2–3x.\n- **8–9s:** about 1s idle pause, then a tap on '알림 고정하기'.\n- **9–11s:** highlight. The toast '알림이 고정되었습니다!' appears and the NotiMemo pin icon shows up in the status bar. Awkward: it is one Toast, but it jumps from mid-screen (9s) to just above the dock (10s) as the keyboard closes. The widget does not visibly change because the new memo goes to 내역.\n- **11–12s:** the user swipes down to open the shade. Transition only; cut or shorten it.\n- **12–14s:** main payoff. The shade shows the '알림메모 / 위젯 활용 테스트' notification, with the screen recorder's notification directly below it, which must be blurred. End this shot at about 13.5s to avoid the close animation.\n- **14–15.1s:** dead tail back on the home screen; cut it.\n\nSuggested edit: keep about 1s of the widget, the dialog opening, typing at 2–3x speed, the tap, the toast, then a hard cut to the open shade (12.0–13.5). That is roughly 6–7s.\n\nPrivacy:\n- **Red recorder pill (status bar):** at x0.119–0.196, y0.01–0.03. It shows at 0–11s and 14–15.1s and is hidden while the shade is open (12–13s). At 0–2s an extra screen-capture icon sits right next to it, so the box is wider until 3s.\n- **NotiMemo pin icon:** from 9s it sits at x≈0.23, right next to the pill. Keep it visible; the pill box stops at 0.215.\n- **Red cast/screen-capture icon (right status cluster, x≈0.70–0.74):** another recording giveaway. Blurring it is recommended. It moves down while the shade is open.\n- **Recorder notification card:** box x0.02, y0.255, w0.96, h0.095 for 12–13.5s. The NotiMemo card above it (y0.17–0.255) stays visible. During the shade open and close animations the card moves, so cutting those moments is easier than tracking a blur.\n- **Personal email:** never appears in video D, so no blur is needed for it.\n\nTouch-indicator dots show on taps (2s widget bar, keys at 3–7s, swipe at 11s). They are harmless and arguably helpful. A '방해 금지 모드가 켜져 있습니다.' banner shows in the shade; it is harmless."
+ }
+}
