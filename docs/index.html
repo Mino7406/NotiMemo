@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>알림메모 (NotiMemo)</title>
+<meta name="description" content="메모를 알림창에 고정해 두고, 앱을 열지 않아도 확인하고 고치는 안드로이드 메모 앱">
+<meta name="theme-color" content="#f7f6f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16171a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+:root {
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --surface-2: #f0eee8;
+  --text: #1d1d1f;
+  --muted: #6b6b70;
+  --line: #e3e0d8;
+  --accent: #e8590c;
+  --accent-soft: #fff1e8;
+  --code-bg: #f3f1ec;
+  --note: #0b69d4; --note-bg: #eaf3ff;
+  --tip: #1a7f37; --tip-bg: #eaf7ee;
+  --important: #8250df; --important-bg: #f3eeff;
+  --warning: #b35900; --warning-bg: #fff5e6;
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16171a;
+    --surface: #1f2024;
+    --surface-2: #26272c;
+    --text: #ececee;
+    --muted: #9a9aa2;
+    --line: #33343a;
+    --accent: #ff8a3d;
+    --accent-soft: #2e2219;
+    --code-bg: #26272c;
+    --note: #58a6ff; --note-bg: #16233a;
+    --tip: #3fb950; --tip-bg: #15281b;
+    --important: #a371f7; --important-bg: #241a38;
+    --warning: #d29922; --warning-bg: #2d2412;
+    --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 64px; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.7 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code {
+  font: .86em/1.5 ui-monospace, SFMono-Regular, "D2Coding", Consolas, monospace;
+  background: var(--code-bg);
+  padding: .12em .38em;
+  border-radius: 5px;
+  word-break: break-all;
+}
+pre {
+  background: var(--code-bg);
+  border-radius: 10px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  margin: 12px 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+pre code { background: none; padding: 0; font-size: inherit; word-break: normal; white-space: pre; }
+
+/* 상단 바 */
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  padding-top: max(10px, env(safe-area-inset-top));
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(12px);
+  -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar img { width: 28px; height: 28px; }
+.topbar .name { font-weight: 700; flex: 1; font-size: 15px; }
+.menu-btn {
+  border: 1px solid var(--line); background: var(--surface); color: var(--text);
+  border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 14px; cursor: pointer;
+}
+
+/* 목차 패널 */
+.toc-panel {
+  position: fixed; inset: 0; z-index: 20;
+  background: rgba(0,0,0,.35);
+  display: none;
+}
+.toc-panel.open { display: block; }
+.toc-panel nav {
+  position: absolute; right: 0; top: 0; bottom: 0;
+  width: min(300px, 84vw);
+  background: var(--surface);
+  padding: 20px 8px 20px 8px;
+  padding-top: max(20px, env(safe-area-inset-top));
+  overflow-y: auto;
+  box-shadow: -4px 0 24px rgba(0,0,0,.15);
+}
+.toc-panel nav h2 { font-size: 13px; color: var(--muted); margin: 0 12px 8px; font-weight: 600; }
+.toc-panel nav a {
+  display: block; padding: 10px 12px; border-radius: 8px; color: var(--text); font-size: 15px;
+}
+.toc-panel nav a:hover, .toc-panel nav a:active { background: var(--surface-2); text-decoration: none; }
+
+main { max-width: 760px; margin: 0 auto; padding: 0 16px 48px; }
+
+/* 머리말 */
+.hero { text-align: center; padding: 32px 0 8px; }
+.hero img.logo { width: 96px; height: 96px; }
+.hero h1 { font-size: 28px; margin: 10px 0 4px; line-height: 1.3; }
+.hero h1 small { display: block; font-size: 15px; color: var(--muted); font-weight: 500; }
+.hero p { text-align: left; color: var(--text); margin: 16px 0; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 12px 0; }
+.badges img { height: 20px; }
+.download {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%;
+  margin: 16px 0 4px;
+  padding: 15px 18px;
+  background: var(--accent); color: #fff;
+  border-radius: 14px; font-weight: 700; font-size: 17px;
+}
+.download:hover { text-decoration: none; filter: brightness(1.05); }
+.sub-links { display: flex; justify-content: center; gap: 16px; font-size: 14px; margin: 8px 0 0; }
+
+/* 목차 카드 */
+.toc-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 12px 0; }
+@media (min-width: 560px) { .toc-grid { grid-template-columns: 1fr 1fr; } }
+.toc-grid a {
+  display: flex; gap: 12px; align-items: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px 14px; color: var(--text); box-shadow: var(--shadow);
+}
+.toc-grid a:hover { text-decoration: none; border-color: var(--accent); }
+.toc-grid .ico { font-size: 22px; width: 28px; text-align: center; flex: none; }
+.toc-grid b { display: block; font-size: 15px; }
+.toc-grid span.d { display: block; font-size: 13px; color: var(--muted); line-height: 1.45; }
+
+/* 섹션 */
+section { margin-top: 36px; }
+h2 {
+  font-size: 22px; margin: 0 0 14px; padding-top: 8px;
+  border-top: 1px solid var(--line); padding-top: 28px;
+}
+h3 { font-size: 18px; margin: 24px 0 10px; }
+h4 { font-size: 16px; margin: 20px 0 8px; }
+ul, ol { padding-left: 1.3em; margin: 8px 0; }
+li { margin: 6px 0; }
+p { margin: 10px 0; }
+
+.feature-group {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 6px 16px 10px; margin: 12px 0; box-shadow: var(--shadow);
+}
+.feature-group h4 { margin-top: 12px; }
+
+/* 알림 상자 */
+.callout {
+  border-left: 4px solid var(--c); background: var(--cb);
+  border-radius: 0 10px 10px 0; padding: 10px 14px; margin: 14px 0;
+}
+.callout .t { display: block; font-weight: 700; color: var(--c); font-size: 14px; margin-bottom: 2px; }
+.callout p { margin: 0; }
+.callout.note { --c: var(--note); --cb: var(--note-bg); }
+.callout.tip { --c: var(--tip); --cb: var(--tip-bg); }
+.callout.important { --c: var(--important); --cb: var(--important-bg); }
+.callout.warning { --c: var(--warning); --cb: var(--warning-bg); }
+
+/* 표 */
+.table-wrap { margin: 12px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; background: var(--surface); border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+th, td { padding: 10px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+th { background: var(--surface-2); font-size: 13px; color: var(--muted); font-weight: 600; }
+tr:last-child td { border-bottom: none; }
+
+/* 좁은 화면: 표를 카드로 */
+@media (max-width: 640px) {
+  table, thead, tbody, tr, td { display: block; width: 100%; }
+  table { background: none; border: none; border-radius: 0; overflow: visible; }
+  thead { display: none; }
+  tr {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px 14px; margin-bottom: 8px; box-shadow: var(--shadow);
+  }
+  td { border: none; padding: 3px 0; }
+  td::before {
+    content: attr(data-label);
+    display: block; font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 1px;
+  }
+  td:first-child { font-weight: 600; }
+  td:first-child::before { display: none; }
+  td:empty { display: none; }
+}
+
+/* 접기 */
+details {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  margin: 10px 0; box-shadow: var(--shadow);
+}
+summary {
+  cursor: pointer; padding: 13px 40px 13px 14px; list-style: none; position: relative; line-height: 1.5;
+}
+summary::-webkit-details-marker { display: none; }
+summary::after {
+  content: ""; position: absolute; right: 16px; top: 50%;
+  width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+  transform: translateY(-70%) rotate(45deg); transition: transform .2s;
+}
+details[open] summary::after { transform: translateY(-30%) rotate(-135deg); }
+details[open] summary { border-bottom: 1px solid var(--line); }
+summary .files { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+summary .files code { font-size: 11.5px; }
+.details-body { padding: 4px 14px 12px; }
+.details-body table { font-size: 14px; }
+@media (max-width: 640px) {
+  .details-body tr { box-shadow: none; background: var(--surface-2); border-color: transparent; }
+}
+
+.tree { font-size: 12.5px; }
+
+.to-top {
+  position: fixed; right: 16px; bottom: max(16px, env(safe-area-inset-bottom));
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--surface); border: 1px solid var(--line); color: var(--text);
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.12);
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.to-top.show { opacity: 1; pointer-events: auto; }
+.to-top:hover { text-decoration: none; }
+
+footer { text-align: center; color: var(--muted); font-size: 14px; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <img src="icon.png" alt="">
+  <span class="name">알림메모</span>
+  <button class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="tocPanel">☰ 목차</button>
+</header>
+
+<div class="toc-panel" id="tocPanel">
+  <nav aria-label="목차">
+    <h2>목차</h2>
+    <a href="#top">🏠 처음으로</a>
+    <a href="#features">✨ 주요 기능</a>
+    <a href="#stack">🧰 기술 스택</a>
+    <a href="#tree">📁 폴더 구조</a>
+    <a href="#install">🚀 설치 및 실행</a>
+    <a href="#settings">⚙️ 설정</a>
+    <a href="#buttons">🎛️ 화면과 버튼</a>
+    <a href="#details">🔍 기능 상세</a>
+    <a href="#functions">🧩 주요 함수</a>
+    <a href="#worker">☁️ AI 서버</a>
+    <a href="#storage">🗂️ 데이터 저장</a>
+    <a href="#convention">🎨 코드 컨벤션</a>
+    <a href="#permissions">🔐 권한</a>
+    <a href="#license">📄 라이선스</a>
+  </nav>
+</div>
+
+<main id="top">
+
+<div class="hero">
+  <a href="https://github.com/Mino7406/NotiMemo/releases"><img class="logo" src="icon.png" alt="NotiMemo 앱 아이콘"></a>
+  <h1>알림메모 <small>NotiMemo</small></h1>
+  <div class="badges">
+    <a href="https://developer.android.com/"><img src="https://img.shields.io/badge/Android-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android"></a>
+    <a href="https://flutter.dev/"><img src="https://img.shields.io/badge/Flutter-Dart-02569B?style=flat-square&logo=flutter&logoColor=white" alt="Flutter"></a>
+    <a href="https://kotlinlang.org/"><img src="https://img.shields.io/badge/Kotlin-native-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin"></a>
+    <a href="https://developers.cloudflare.com/workers-ai/"><img src="https://img.shields.io/badge/AI-Cloudflare%20Workers-F38020?style=flat-square&logo=cloudflare&logoColor=white" alt="AI server"></a>
+    <a href="https://github.com/Mino7406/NotiMemo/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-4c1?style=flat-square" alt="License: MIT"></a>
+    <img src="https://img.shields.io/badge/docs-%ED%95%9C%EA%B5%AD%EC%96%B4-blue?style=flat-square" alt="language">
+  </div>
+  <p>메모를 알림창에 고정해 두고, 앱을 열지 않아도 확인하고 고치는 안드로이드 메모 앱입니다. 예약 알림, 알림 내역, 사진 글자 인식, AI 자동 정리, 홈 화면 위젯을 제공합니다. 화면은 <a href="https://flutter.dev/">Flutter</a>, 알림·알람·위젯은 <a href="https://kotlinlang.org/">네이티브(Kotlin)</a>로 작성했습니다.</p>
+  <a class="download" href="https://github.com/Mino7406/NotiMemo/releases/latest">⬇️ 최신 APK 받기</a>
+  <div class="sub-links">
+    <a href="https://github.com/Mino7406/NotiMemo">GitHub 저장소</a>
+    <a href="https://github.com/Mino7406/NotiMemo/releases">전체 릴리스</a>
+  </div>
+</div>
+
+<section id="toc">
+  <h3>목차</h3>
+  <div class="toc-grid">
+    <a href="#features"><span class="ico">✨</span><span><b>주요 기능</b><span class="d">앱에서 할 수 있는 것</span></span></a>
+    <a href="#stack"><span class="ico">🧰</span><span><b>기술 스택 · 폴더 구조</b><span class="d">쓴 라이브러리와 파일 배치</span></span></a>
+    <a href="#install"><span class="ico">🚀</span><span><b>설치 및 실행</b><span class="d">APK 설치, 직접 빌드, AI 서버 배포</span></span></a>
+    <a href="#settings"><span class="ico">⚙️</span><span><b>설정</b><span class="d">설정 화면 항목과 코드 안의 상수</span></span></a>
+    <a href="#buttons"><span class="ico">🎛️</span><span><b>화면과 버튼</b><span class="d">입력창 버튼과 ☰ 메뉴 정리</span></span></a>
+    <a href="#details"><span class="ico">🔍</span><span><b>기능 상세</b><span class="d">기능별 동작 순서 (눌러서 펼치기)</span></span></a>
+    <a href="#functions"><span class="ico">🧩</span><span><b>주요 함수</b><span class="d">파일별 핵심 함수 (눌러서 펼치기)</span></span></a>
+    <a href="#storage"><span class="ico">🗂️</span><span><b>데이터 저장</b><span class="d">저장 키와 네이티브·Flutter가 나눠 쓰는 방식</span></span></a>
+    <a href="#convention"><span class="ico">🎨</span><span><b>코드 컨벤션 · 권한</b><span class="d">코드 작성 규칙, 안드로이드 권한</span></span></a>
+  </div>
+</section>
+
+<section id="features">
+  <h2>주요 기능</h2>
+
+  <div class="feature-group">
+    <h4>📌 알림 고정</h4>
+    <ul>
+      <li><b>여러 메모 고정</b>: 메모마다 알림이 하나씩 뜹니다. 알림에 <code>수정</code>, <code>지우기</code> 버튼이 있어서 앱을 열지 않고도 고칠 수 있습니다. 알림을 밀어서 지워도 다시 올라옵니다.</li>
+      <li><b>알림 복구</b>: 강제 종료나 재설치로 알림이 사라지면, 앱을 켤 때 저장해 둔 목록대로 다시 올립니다.</li>
+      <li><b>진동</b>: 고정하거나 예약할 때 짧게 진동합니다. 설정에서 끌 수 있습니다.</li>
+    </ul>
+  </div>
+
+  <div class="feature-group">
+    <h4>⏰ 예약 · 내역</h4>
+    <ul>
+      <li><b>예약 알림</b>: 날짜와 시각을 정해 두면 그때 알림이 고정됩니다. 시각은 휠로 고르거나 직접 입력합니다. 예약 목록에서 확인하고 취소할 수 있습니다.</li>
+      <li><b>알림 내역</b>: 지난 메모를 다시 고정하거나 예약해서 고정할 수 있습니다. 하나씩 지우거나 전체를 지울 수도 있습니다.</li>
+      <li><b>필터</b>: 내역과 예약 목록을 분류(학교, 할일, 약속, 쇼핑, 건강, 돈, 기타)나 우선순위로 걸러 볼 수 있습니다.</li>
+    </ul>
+  </div>
+
+  <div class="feature-group">
+    <h4>✨ 입력 · 자동 정리</h4>
+    <ul>
+      <li><b>사진으로 메모 가져오기</b>: 사진 속 글자를 한국어로 읽어서 입력창에 넣습니다. 기기 안에서 처리하기 때문에 인터넷이 없어도 됩니다.</li>
+      <li><b>AI 자동 정리(✨)</b>: 메모의 분류, 우선순위, 한 줄 요약, 일정 시각을 찾아 줍니다. 서버가 안 되거나 동의하지 않았으면 기기 안의 키워드 분석으로 대신합니다. 일정보다 몇 분 앞서 알려 주는 여유 시간도 정할 수 있습니다.</li>
+      <li><b>홈 화면 위젯</b>: 위젯에서 바로 메모를 고정하고, 예약 목록과 알림 내역을 봅니다. 기본 크기는 4×2이고 가로로 5칸까지 늘어납니다.</li>
+    </ul>
+  </div>
+
+  <div class="feature-group">
+    <h4>🧩 그 밖에</h4>
+    <ul>
+      <li><b>사용 방법</b>: 처음 설치하면 실제 화면 위에 6단계 안내가 뜹니다. ☰ 메뉴에서 다시 볼 수 있습니다.</li>
+      <li>라이트/다크 테마, 기기 언어로 나오는 복사·붙여넣기 메뉴, 알림 권한 안내, 최신 버전 확인</li>
+    </ul>
+  </div>
+</section>
+
+<section id="stack">
+  <h2>기술 스택</h2>
+  <ul>
+    <li><b><a href="https://flutter.dev/">Flutter</a> / Dart</b>: 화면, 저장소, 분류와 시간 파서</li>
+    <li><b>Kotlin</b>: 알림 서비스, 예약 알람, 홈 화면 위젯, 빠른 입력 창</li>
+    <li><b><a href="https://pub.dev/packages/google_mlkit_text_recognition">google_mlkit_text_recognition</a> ^0.17.1</b>: 한국어 글자 인식(기기 안에서 처리)</li>
+    <li><a href="https://pub.dev/packages/image_picker">image_picker</a>, <a href="https://pub.dev/packages/permission_handler">permission_handler</a>, <a href="https://pub.dev/packages/shared_preferences">shared_preferences</a>, <a href="https://pub.dev/packages/package_info_plus">package_info_plus</a>, <a href="https://pub.dev/packages/url_launcher">url_launcher</a>, <code>flutter_localizations</code></li>
+    <li><b><a href="https://developers.cloudflare.com/workers-ai/">Cloudflare Workers AI</a></b>: 자동 정리 서버(<code>worker/</code>)</li>
+    <li><b>데이터 저장</b>: 따로 DB를 두지 않고 안드로이드 SharedPreferences에 모아 둡니다.</li>
+  </ul>
+</section>
+
+<section id="tree">
+  <h2>폴더 구조</h2>
+  <pre class="tree"><code>NotiMemo/
+├─ lib/
+│  ├─ main.dart                 # 시작점. 테마와 번역을 설정하고 HomeScreen을 띄움
+│  ├─ screens/
+│  │  ├─ home_screen.dart       # 홈 화면. 고정, 예약, ✨, 사진, 내역, 사용 방법, 권한 안내
+│  │  └─ settings_screen.dart   # 설정. 테마, 진동, AI, 앱 정보
+│  ├─ models/                   # MemoEntry(메모), ScheduledNote(예약), MemoAnalysis(분석 결과)
+│  ├─ services/
+│  │  ├─ notification_service.dart  # 네이티브(Kotlin) 호출, 알림 권한
+│  │  ├─ ai_classifier.dart     # AI 서버 호출, 실패하면 기본 분석으로 대체
+│  │  ├─ ocr_service.dart       # 사진 선택과 글자 인식
+│  │  └─ update_service.dart    # GitHub 최신 릴리스와 버전 비교
+│  ├─ storage/                  # SharedPreferences 읽기/쓰기
+│  ├─ utils/                    # 시간 파서, 키워드 분류, 여유 시간, 필터, 글자 정리
+│  ├─ widgets/                  # 입력 카드, 시트, 다이얼로그, 토스트, 메뉴, 사용 방법 안내
+│  └─ theme/app_theme.dart      # 색
+├─ android/app/src/main/
+│  ├─ kotlin/com/example/notimemo/
+│  │  ├─ NotiMemoService.kt     # 고정 메모마다 알림 하나를 올리고, 지우기·수정·재게시 처리
+│  │  ├─ AlarmScheduler.kt      # 예약 알람 등록과 발동, 재부팅 뒤 복원
+│  │  ├─ NotiMemoWidget.kt      # 홈 화면 위젯과 목록
+│  │  ├─ QuickInputActivity.kt  # 위젯 입력줄을 누르면 뜨는 작은 입력 창
+│  │  ├─ WidgetRows.kt          # 위젯 목록 줄을 JSON에서 만드는 함수
+│  │  └─ MainActivity.kt        # Flutter와 네이티브 사이 통신
+│  └─ res/                      # 위젯 레이아웃, 색(라이트/다크), 스타일
+├─ worker/                      # AI 분류 서버(Cloudflare Workers AI)
+│  ├─ src/index.js              # 요청 처리. 크기·JSON 확인, 횟수 제한, AI 호출, 결과 정리
+│  └─ src/classify.js           # 분류 기준, 프롬프트, 결과 검증
+├─ test/                        # 자동 테스트
+├─ assets/                      # Caveat 폰트(OFL), 런처 아이콘 원본, README용 아이콘
+└─ LICENSE                      # MIT</code></pre>
+</section>
+
+<section id="install">
+  <h2>설치 및 실행</h2>
+  <p><a href="https://github.com/Mino7406/NotiMemo/releases">Releases</a>에서 최신 APK를 받아 설치합니다. 갤럭시(One UI, Android 16)에서 테스트했습니다.</p>
+
+  <div class="callout important"><span class="t">❗ 중요</span><p><b>v2.6.0을 쓰고 계셨다면 삭제하고 새로 설치해 주세요.</b> 서명 키가 바뀌어서 이전 앱 위에는 덮어쓸 수 없습니다.</p></div>
+
+  <div class="callout note"><span class="t">ℹ️ 참고</span><p>알림을 고정하려면 <b>알림 권한</b>이 필요합니다. 처음 설치하면 사용 방법 안내가 끝난 뒤에 권한 창이 뜹니다. 권한이 꺼져 있으면 <code>설정</code> 버튼이 달린 안내가 계속 보입니다.</p></div>
+
+  <p>직접 빌드하려면:</p>
+  <pre><code>flutter pub get
+flutter test
+flutter run --release</code></pre>
+
+  <p>배포용 APK에는 서명 키가 필요합니다. 키스토어(<code>*.jks</code>)와 <code>android/key.properties</code>는 <code>.gitignore</code>로 저장소에서 빼 두었고, 없으면 debug 키로 서명됩니다.</p>
+
+  <div class="callout warning"><span class="t">⚠️ 주의</span><p><b>debug 키로 서명한 APK는 배포 키로 설치된 앱 위에 덮어쓸 수 없습니다.</b> 폰에 설치할 때는 같은 키로 서명한 빌드를 쓰세요.</p></div>
+
+  <h3>AI 서버 (<code>worker/</code>)</h3>
+  <p>앱이 호출하는 서버 코드입니다. 직접 배포하려면:</p>
+  <pre><code>cd worker
+npm install
+npm test          # node --test
+npx wrangler deploy</code></pre>
+  <p>배포하고 나온 주소를 <a href="https://github.com/Mino7406/NotiMemo/blob/master/lib/services/ai_classifier.dart"><code>lib/services/ai_classifier.dart</code></a>의 <code>defaultEndpoint</code>에 넣으면 됩니다. <code>wrangler.toml</code>의 <code>MODEL</code>로 모델을 바꿀 수 있고, 짧은 시간에 몰리는 요청을 막는 <code>LIMITER</code>(60초에 6회)도 들어 있습니다.</p>
+
+  <div class="callout tip"><span class="t">💡 팁</span><p><b>VPN을 켜면</b> AI 서버에 연결되지 않아서 기본 분석으로 넘어갑니다. VPN을 끄거나 이 앱을 VPN 제외 앱에 넣어 주세요.</p></div>
+</section>
+
+<section id="settings">
+  <h2>설정</h2>
+  <p>설정 화면(☰ → 설정)에서 바꾸는 값입니다.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>항목</th><th>설명</th><th>기본값</th></tr></thead>
+    <tbody>
+      <tr><td>테마</td><td>시스템 기본, 라이트, 다크</td><td>시스템 기본</td></tr>
+      <tr><td>알림 진동</td><td>고정, 예약, 재게시 때 60ms 진동</td><td>켜짐</td></tr>
+      <tr><td>AI 기능 켜기</td><td>켜면 ✨가 서버 분석을 씁니다. 켤 때 메모가 외부 서버로 전송된다는 안내와 동의를 받습니다</td><td>꺼짐</td></tr>
+      <tr><td>자동 분류 시스템</td><td>AI를 켰을 때만 보입니다. 끄면 ✨는 메모 속 예약 시각만 찾고 서버로는 보내지 않습니다</td><td>켜짐</td></tr>
+      <tr><td>여유 시간</td><td>일정 시각보다 몇 분 앞서 알릴지. 안 함, 5분, 10분, 30분, 1시간, 2시간, 직접 입력(최대 24시간)</td><td>30분</td></tr>
+      <tr><td>앱 정보</td><td>버전, 업데이트 확인, 문의</td><td></td></tr>
+    </tbody>
+  </table></div>
+
+  <p>설정 화면이 아니라 코드에서 바꾸는 상수:</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>상수</th><th>위치</th><th>설명</th></tr></thead>
+    <tbody>
+      <tr><td><code>AiClassifier.releaseDailyLimit</code></td><td><code>services/ai_classifier.dart</code></td><td>기기당 하루 서버 호출 상한(20). 서버에 요청을 보내면 성공 여부와 상관없이 셉니다</td></tr>
+      <tr><td><code>AiClassifier.timeout</code></td><td>같은 파일</td><td>서버 응답을 기다리는 시간(8초). 넘으면 기본 분석으로 대신합니다</td></tr>
+      <tr><td><code>_inputMinLines</code></td><td><code>widgets/home_widgets.dart</code></td><td>입력창 최소 줄 수(6). 글이 길어지면 제한 없이 늘어납니다</td></tr>
+      <tr><td><code>_footerFadeStart</code> / <code>_footerFadeEnd</code></td><td><code>screens/home_screen.dart</code></td><td>아래 손글씨 문구가 옅어지는 구간</td></tr>
+      <tr><td><code>_scrollFadeHeight</code></td><td>같은 파일</td><td>스크롤할 때 내용이 고정 영역과 만나는 곳에서 옅어지는 높이(28)</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="buttons">
+  <h2>화면과 버튼</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>위치</th><th>버튼</th><th>동작</th></tr></thead>
+    <tbody>
+      <tr><td>입력창</td><td><code>알림 고정하기</code></td><td>메모를 알림창에 고정하고 내역에 저장합니다</td></tr>
+      <tr><td>입력창</td><td><code>알림 지우기</code> / <code>모두 지우기</code></td><td>고정된 알림을 내립니다. 여러 개면 전부 내립니다</td></tr>
+      <tr><td>입력창 오른쪽(글이 있을 때)</td><td>✕</td><td>새 메모를 지웁니다. 글이 있으면 확인 창이 뜨고, 공백뿐이면 바로 비웁니다</td></tr>
+      <tr><td>입력창 오른쪽</td><td>✨</td><td>AI 자동 정리. 결과 시트에서 적용하거나 예약합니다</td></tr>
+      <tr><td>입력창 오른쪽</td><td>🕒</td><td>예약 생성</td></tr>
+      <tr><td>상단</td><td>☰</td><td>오른쪽에서 밀려 나오는 메뉴</td></tr>
+      <tr><td>☰ 메뉴</td><td>AI 자동 정리, 사진으로 메모 가져오기</td><td>입력창 기능을 메뉴에서도 실행</td></tr>
+      <tr><td>☰ 메뉴</td><td>예약 생성, 예약 목록</td><td>예약 시트, 예약 목록 시트</td></tr>
+      <tr><td>☰ 메뉴</td><td>알림 내역</td><td>내역 시트(다시 고정 ↻, 삭제 ✕, 전체삭제)</td></tr>
+      <tr><td>☰ 메뉴</td><td>설정, 사용 방법</td><td>설정 화면, 사용 방법 안내 다시 보기</td></tr>
+      <tr><td>홈 화면 위젯</td><td>입력줄, <code>예약</code>/<code>내역</code> 탭, 목록 항목</td><td>빠른 입력 창, 위젯 안에서 목록 바꾸기, 앱에서 해당 목록 열기</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="details">
+  <h2>기능 상세</h2>
+  <div class="callout tip"><span class="t">💡 팁</span><p>항목 제목을 누르면 상세 내용이 펼쳐집니다.</p></div>
+
+  <details>
+    <summary>📌 <b>알림 고정</b><span class="files"><code>NotiMemoService.kt</code>, <code>home_screen.dart</code></span></summary>
+    <div class="details-body"><ol>
+      <li>메모를 쓰고 <code>알림 고정하기</code>를 누르면 알림 권한부터 확인합니다. 없으면 요청하고, 막혀 있으면 안내합니다.</li>
+      <li>Flutter가 MethodChannel <code>show</code>로 <code>{id, memo, time}</code>을 네이티브에 넘깁니다.</li>
+      <li><code>NotiMemoService</code>가 고정 목록(<code>pinned_notes</code>)에 추가하고 메모마다 알림을 하나씩 올립니다. 첫 알림은 포그라운드 서비스(앵커)로, 나머지는 일반 <code>notify</code>로 올립니다.</li>
+      <li>알림의 <code>수정</code>은 알림 안에서 바로 입력해서 고정 목록과 앱 내역에 반영하고, <code>지우기</code>는 그 알림만 내립니다. 밀어서 지우면 <code>deleteIntent</code>로 다시 올립니다.</li>
+      <li>앵커 알림이 지워지면 다른 알림으로 앵커를 옮기고, 고정 목록이 비면 서비스를 끝냅니다.</li>
+      <li>앱을 켰을 때 고정 목록은 있는데 알림이 하나도 없으면(<code>restorePinnedIfMissing</code>) 저장된 목록대로 다시 올립니다.</li>
+    </ol></div>
+  </details>
+
+  <details>
+    <summary>⏰ <b>예약 알림</b><span class="files"><code>AlarmScheduler.kt</code>, <code>schedule_sheet.dart</code></span></summary>
+    <div class="details-body"><ol>
+      <li>🕒를 누르면 날짜 휠(약 1년치), 오전/오후, 시(1~12)와 분(0~59) 입력 칸으로 시각을 고릅니다. 지난 시각은 확인할 수 없습니다.</li>
+      <li>정확한 알람(<code>알람 및 리마인더</code>) 권한이 없으면 안내하고 설정 화면을 엽니다. 거절해도 예약은 되지만 몇 분 늦을 수 있습니다.</li>
+      <li>네이티브 <code>schedule</code>이 예약 목록(<code>scheduled_notes</code>)에 저장하고 <code>AlarmManager</code>에 등록합니다. 권한이 있으면 정확한 알람으로 등록합니다.</li>
+      <li>시각이 되면 <code>AlarmReceiver</code>가 <code>fire</code>를 불러서 예약을 목록에서 빼고 메모를 고정합니다. 포그라운드 서비스를 시작할 수 없는 상황(부팅 직후 등)이면 일반 알림으로 알립니다.</li>
+      <li>재부팅이나 앱 업데이트 뒤에는 <code>BootReceiver</code>가 알람을 다시 등록합니다. 이미 지난 예약은 바로 올립니다.</li>
+      <li>예약 목록에서는 ✕나 옆으로 밀기로 취소합니다. 행을 눌러도 취소되지 않습니다.</li>
+    </ol></div>
+  </details>
+
+  <details>
+    <summary>🗂️ <b>알림 내역 · 예약 목록</b><span class="files"><code>history_sheet.dart</code>, <code>scheduled_sheet.dart</code>, <code>memo_list_row.dart</code></span></summary>
+    <div class="details-body"><ul>
+      <li>두 목록은 같은 행 위젯(<code>MemoListRow</code>)을 씁니다. <code>분류 · 우선순위</code>, 메모, 시간 순으로 보이고 아이콘은 메모 첫 줄 높이에 맞춥니다.</li>
+      <li>위쪽에 <code>분류</code>, <code>우선순위</code> 필터 칩이 붙습니다. 항목이 2개 미만이거나 분류된 항목이 없으면 숨깁니다. 필터를 건 상태에서도 삭제는 원래 목록의 위치로 처리합니다(<code>visibleIndexes</code>).</li>
+      <li>내역 행의 ↻를 누르면 <code>취소 / 예약해서 고정 / 바로 고정</code> 중에서 고릅니다. 예약해서 고정할 때는 분류와 우선순위가 그대로 유지됩니다.</li>
+      <li><code>전체삭제</code>는 확인 창을 거칩니다. 필터를 건 상태에서도 보이는 것만이 아니라 전체가 지워집니다.</li>
+      <li>분류가 없는 옛 기록은 앱을 열 때 기본 분석으로 한 번 채웁니다(<code>backfillClassification</code>). 설정에서 AI를 켜고 자동 분류를 끈 경우에는 채우지 않습니다.</li>
+    </ul></div>
+  </details>
+
+  <details>
+    <summary>📷 <b>사진으로 메모 가져오기</b><span class="files"><code>ocr_service.dart</code>, <code>ocr_text.dart</code></span></summary>
+    <div class="details-body"><ol>
+      <li>☰ → <code>사진으로 메모 가져오기</code>에서 카메라 촬영이나 갤러리 선택을 고릅니다.</li>
+      <li>ML Kit 한국어 모델로 글자를 읽고, <code>cleanOcrText</code>가 줄 끝 공백, 연속된 빈 줄, 앞뒤 빈 줄을 정리합니다.</li>
+      <li>새 메모가 비어 있으면 바로 채웁니다. 이미 글이 있으면 "기존 메모를 지우고 불러오시겠습니까?" 토스트로 먼저 묻고, 적용하면 사진 글자로 바뀝니다.</li>
+      <li>채워진 뒤에는 ✨를 가리키는 반투명 말풍선("AI가 자동으로 분석해줘요!")이 12초 동안 깜빡입니다. 누를 수는 없는 안내입니다.</li>
+      <li>사진 원본은 저장하지 않고, 임시 파일은 글자를 읽은 직후에 지웁니다.</li>
+    </ol></div>
+  </details>
+
+  <details>
+    <summary>✨ <b>AI 자동 정리</b><span class="files"><code>ai_classifier.dart</code>, <code>rule_classifier.dart</code>, <code>worker/</code></span></summary>
+    <div class="details-body"><ol>
+      <li>✨를 처음 누르면 동의 창이 뜹니다. 메모가 외부 서버로 전송된다는 것과 기기당 하루 20회라는 것을 알려 줍니다. 동의 여부는 저장되고 설정에서 바꿀 수 있습니다.</li>
+      <li><code>AiClassifier.analyze</code>가 동의 여부, 오늘 사용 횟수를 차례로 확인하고 서버를 부릅니다. <code>X-Device-Id</code> 헤더에는 설치마다 만든 임의의 id를 넣습니다. 서버에 닿는 시도는 성공 여부와 상관없이 횟수에 셉니다.</li>
+      <li>서버는 분류(<code>학교/할일/약속/쇼핑/건강/돈/기타</code>), 우선순위(<code>low/normal/high</code>), 한 줄 요약(30자 이내, 25자 이하의 짧은 메모는 요약 없음)을 돌려줍니다.</li>
+      <li>어느 단계에서든 실패하면 예외를 던지지 않고 키워드 기반 기본 분석(<code>classifyByRules</code>)으로 대신하고, 이유를 사용자에게 보여 줍니다. 동의 안 함, 하루 횟수 소진, 오프라인, 응답 지연, 서버 사용량 소진, 요청 과다, 서버 오류가 있습니다.</li>
+      <li>결과 시트에는 분류, 우선순위, 요약, 일정 시각과 함께 <code>AI 분석</code> 또는 <code>기본 분석</code>이 표시됩니다. 적용하면 요약이 있을 때 입력창 메모가 요약으로 바뀌고, <code>되돌리기</code> 토스트(6초)로 원문을 되살릴 수 있습니다. 요약을 고쳤다면 덮어쓰지 않습니다.</li>
+      <li>일정 시각이 있으면 <code>suggestReminder</code>가 여유 시간만큼 앞당긴 시각을 예약 시각으로 제안합니다.</li>
+    </ol></div>
+  </details>
+
+  <details>
+    <summary>🕘 <b>시간 파서</b><span class="files"><code>due_parser.dart</code>, <code>reminder_time.dart</code></span></summary>
+    <div class="details-body"><ul>
+      <li>일정 시각은 서버가 아니라 앱 안의 규칙 기반 한국어 파서가 계산합니다. LLM이 요일 표현을 한 주 뒤로 계산하는 일이 있었고, 오프라인에서도 같은 결과가 나와야 해서 이렇게 했습니다.</li>
+      <li>읽는 표현은 <code>30분 뒤</code>, <code>2시간 후</code>, <code>1시간 30분 뒤</code>, <code>오늘</code> <code>내일</code> <code>낼</code> <code>모레</code> <code>글피</code>, <code>10월 15일</code>, <code>2027년 3월 5일</code>, 요일(<code>금요일</code>, <code>다음주 월요일</code>, <code>담주 수욜</code>, <code>이번주말</code>), <code>오후 3시 30분</code>, <code>저녁 7시</code>, <code>3시 반</code>, <code>정오</code>, <code>자정</code>, 시간대 단어(<code>내일 저녁</code>)입니다.</li>
+      <li>시각 없이 날짜만 있으면 오전 9시로 채우고(<code>hasTime: false</code>), 반복 일정(<code>매주 …</code>)이나 확실하지 않은 표현은 <code>null</code>을 돌려서 예약을 제안하지 않습니다. 틀린 시각으로 알리는 것이 알림이 없는 것보다 낫지 않다고 봤습니다.</li>
+      <li><code>suggestReminder</code>는 일정 시각의 N분 전을 알림 시각으로 제안합니다. 이미 지났으면 5분 뒤(일정이 5분 안쪽이면 일정 시각)로 당기고, 시각이 없는 일정은 그대로 둡니다.</li>
+    </ul></div>
+  </details>
+
+  <details>
+    <summary>🧩 <b>홈 화면 위젯</b><span class="files"><code>NotiMemoWidget.kt</code>, <code>QuickInputActivity.kt</code>, <code>WidgetRows.kt</code></span></summary>
+    <div class="details-body"><ol>
+      <li>위쪽 입력줄을 누르면 앱 전체가 아니라 작은 입력 창(<code>QuickInputActivity</code>)이 뜹니다. <code>알림 고정하기</code>를 누르면 서비스를 시작하고, 앱 내역(<code>memo_list</code>) 맨 앞에 새 항목을 넣고, 진동 설정을 따릅니다. 알림 권한이 없으면 앱을 엽니다.</li>
+      <li><code>예약</code>, <code>내역</code> 탭은 위젯 안에서 목록(<code>NotiMemoWidgetService</code>)만 바꿉니다. 마지막으로 고른 탭은 따로 저장합니다.</li>
+      <li>목록 항목을 누르면 앱이 열리고(<code>open</code> extra), 그 탭에 맞는 시트(<code>scheduled</code>, <code>history</code>)가 바로 열립니다.</li>
+      <li>데이터가 바뀌면(예약 저장, 내역 저장, 알림에서 수정) <code>NotiMemoWidget.refresh</code>로 다시 그립니다. Flutter 쪽에서는 <code>refreshWidget</code> 채널을 부르고, 안전장치로 30분마다도 갱신합니다.</li>
+      <li>기본 4×2, 가로 4~5칸, 세로는 자유입니다. 라이트/다크는 리소스 한정자(<code>values-night</code>)로 따라갑니다.</li>
+    </ol></div>
+  </details>
+
+  <details>
+    <summary>🎓 <b>사용 방법 (코치마크)</b><span class="files"><code>coach_mark.dart</code>, <code>home_screen.dart</code></span></summary>
+    <div class="details-body"><ul>
+      <li>실제 홈 화면 위에 어두운 막을 씌우고 대상만 둥근 구멍으로 밝혀서 6단계를 안내합니다. 입력창, 알림 고정하기, ✨, 🕒, ☰ 메뉴(메뉴를 실제로 열어서 보여 줌), 알림창에서 수정·지우기 순서입니다.</li>
+      <li>대상은 <code>Key</code>로 찾습니다(<code>input-card</code>, <code>pin-button</code>, <code>card-analyze</code>, <code>card-schedule</code>, <code>menu-drawer</code>). ✨와 🕒는 글이 있어야 보이기 때문에 안내하는 동안 샘플 문구를 잠깐 넣었다가, 끝나면 원래 글로 되돌립니다.</li>
+      <li><code>이전</code>, <code>다음</code>, <code>건너뛰기</code>가 있고 처음 설치할 때만 자동으로 뜹니다(<code>tutorial_seen</code>). 이미 쓰던 흔적(내역, 고정, 예약)이 있으면 본 것으로 처리합니다.</li>
+      <li>알림 권한 요청은 이 안내가 끝난 뒤에 합니다.</li>
+    </ul></div>
+  </details>
+
+  <details>
+    <summary>🔔 <b>권한 안내 · 업데이트 확인</b><span class="files"><code>notification_service.dart</code>, <code>update_service.dart</code></span></summary>
+    <div class="details-body"><ul>
+      <li><b>권한 안내</b>: 알림 권한이 꺼져 있으면 <code>알림 권한이 꺼져 있어요.</code> 토스트가 닫을 때까지 남습니다. <code>설정</code>을 누르면 권한 요청 창을 다시 띄우고, "다시 묻지 않음"으로 막혀 있으면 앱 설정 화면을 엽니다. 앱을 켤 때와 설정에서 돌아왔을 때 다시 확인합니다.</li>
+      <li><b>업데이트 확인</b>(설정 → 앱 정보): GitHub 최신 릴리스 태그와 현재 버전을 점(.)으로 나눠서 앞자리부터 비교합니다. 새 버전이면 안내 창이 뜨고(<code>업데이트</code>를 누르면 릴리스 페이지), 최신이면 토스트, 실패하면 오류 토스트가 뜹니다. 앱을 켤 때는 새 버전이 있을 때만 조용히 안내합니다.</li>
+    </ul></div>
+  </details>
+</section>
+
+<section id="functions">
+  <h2>주요 함수</h2>
+  <div class="callout tip"><span class="t">💡 팁</span><p>파일명을 누르면 함수 표가 펼쳐집니다.</p></div>
+
+  <details>
+    <summary>📄 <b><code>services/notification_service.dart</code>: 네이티브 창구</b></summary>
+    <div class="details-body"><table>
+      <thead><tr><th>함수</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td><code>show(entry)</code> / <code>cancel([id])</code></td><td>메모를 고정 / 해제. id가 없으면 전부 해제</td></tr>
+        <tr><td><code>schedule(entry, at)</code> / <code>cancelSchedule(id)</code></td><td>예약 알람 등록 / 취소</td></tr>
+        <tr><td><code>canScheduleExact()</code> / <code>requestExactAlarm()</code></td><td>정확한 알람 권한 확인 / 설정 화면 열기</td></tr>
+        <tr><td><code>ensurePermission()</code></td><td>알림 권한을 확인하고 필요하면 요청. 쓸 수 있으면 <code>null</code>, 아니면 보여 줄 오류 문구</td></tr>
+        <tr><td><code>requestOrOpenSettings()</code></td><td>권한 요청 창을 다시 띄움. 막혀 있으면 앱 설정 화면</td></tr>
+        <tr><td><code>restorePinned()</code></td><td>고정 목록은 있는데 알림이 없으면 다시 올림</td></tr>
+        <tr><td><code>vibrate()</code></td><td>설정이 켜져 있으면 60ms 진동</td></tr>
+        <tr><td><code>refreshWidget()</code></td><td>홈 화면 위젯 목록을 다시 그림</td></tr>
+        <tr><td><code>listenForChanges(onChanged, {onOpenTarget})</code></td><td>네이티브가 알리는 "고정 상태 변경"과 "위젯에서 열기"를 받음</td></tr>
+        <tr><td><code>launchTarget()</code></td><td>위젯에서 눌러 앱이 새로 켜졌을 때 열어야 할 화면. 한 번 읽으면 비워짐</td></tr>
+      </tbody>
+    </table></div>
+  </details>
+
+  <details>
+    <summary>📄 <b><code>services/ai_classifier.dart</code>: AI 분석</b></summary>
+    <div class="details-body"><table>
+      <thead><tr><th>함수</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td><code>analyze(memo, {now})</code></td><td>동의, 하루 횟수를 확인한 뒤 서버를 부릅니다. 실패하면 <code>classifyByRules</code>로 대신하고 예외는 던지지 않습니다</td></tr>
+        <tr><td><code>_parse(body, memo, now)</code></td><td>서버 응답을 검증. 모르는 분류는 <code>기타</code>, 짧은 메모는 요약을 비우고, 일정 시각은 <code>parseDue</code>로 계산</td></tr>
+        <tr><td><code>_reasonForError(response)</code></td><td>429(<code>quota_exceeded</code>와 일반 제한)와 그 밖의 오류를 사용자에게 보여 줄 이유로 바꿈</td></tr>
+      </tbody>
+    </table></div>
+  </details>
+
+  <details>
+    <summary>📄 <b><code>utils/</code>: 파서, 분류, 표시</b></summary>
+    <div class="details-body"><table>
+      <thead><tr><th>함수</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td><code>parseDue(memo, now)</code></td><td>메모에서 일정 시각을 찾아 <code>ParsedDue(at, hasTime)</code>로 돌려줌. 불확실하면 <code>null</code></td></tr>
+        <tr><td><code>suggestReminder(due, now, {leadMinutes})</code></td><td>여유 시간만큼 앞당긴 알림 시각 제안</td></tr>
+        <tr><td><code>leadLabel(lead)</code></td><td><code>30분 전</code>, <code>1시간 30분 전</code> 같은 표시 문구</td></tr>
+        <tr><td><code>classifyByRules(memo, now)</code></td><td>키워드로 분류, 우선순위, 요약, 일정을 만드는 기본 분석</td></tr>
+        <tr><td><code>withRuleClassification(entry, now)</code> / <code>backfillClassification(list, now)</code></td><td>분류가 없는 메모 하나 / 옛 내역 전체를 기본 분석으로 채움</td></tr>
+        <tr><td><code>ClassFilter</code> / <code>visibleIndexes(items, filter, classOf)</code></td><td>분류·우선순위 필터와, 필터를 통과한 항목의 원래 위치</td></tr>
+        <tr><td><code>cleanOcrText(raw)</code></td><td>인식된 글자의 줄 끝 공백과 빈 줄 정리</td></tr>
+        <tr><td><code>formatEntryTime(ms)</code> / <code>dateLabel(d, today)</code></td><td>목록용 시각 / <code>10월 2일 (금)</code> 형태의 날짜 표기</td></tr>
+      </tbody>
+    </table></div>
+  </details>
+
+  <details>
+    <summary>📄 <b><code>storage/</code>: 저장소</b></summary>
+    <div class="details-body"><table>
+      <thead><tr><th>함수</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td><code>MemoStorage.getList()</code> / <code>saveList(list)</code></td><td>내역 읽기(옛 형식 3종 호환) / 저장하고 위젯 갱신</td></tr>
+        <tr><td><code>MemoStorage.getPinnedIds()</code> / <code>getScheduled()</code></td><td>네이티브가 쓴 고정·예약 목록을 읽음(읽기 전에 <code>reload</code>)</td></tr>
+        <tr><td><code>MemoStorage.getCurrent()</code> / <code>setCurrent(memo)</code></td><td>입력창에 쓰던 글 임시 저장</td></tr>
+        <tr><td><code>AiStorage.usageToday(now)</code> / <code>addUsage(now)</code></td><td>오늘 서버 호출 횟수 조회 / 증가. 날짜가 바뀌면 0부터</td></tr>
+        <tr><td><code>AiStorage.getDeviceId()</code></td><td>설치마다 만든 임의의 24자 id(안드로이드 고유 번호가 아님)</td></tr>
+        <tr><td><code>AiStorage.classificationEnabled()</code></td><td>저장할 때 분류를 자동으로 채워도 되는지. AI를 쓰지 않으면 항상 허용</td></tr>
+      </tbody>
+    </table></div>
+  </details>
+
+  <details>
+    <summary>📄 <b>네이티브(Kotlin)</b></summary>
+    <div class="details-body"><table>
+      <thead><tr><th>클래스 / 함수</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td><code>NotiMemoService.onStartCommand</code></td><td>명령(<code>STOP</code>, <code>STOP_ALL</code>, <code>EDIT</code>, <code>REPOST</code>, 새 고정)을 처리</td></tr>
+        <tr><td><code>NotiMemoService.post</code> / <code>buildNotification</code></td><td>알림 게시(앵커 / 일반)와 모양(제목, 굵은 메모, <code>수정</code>·<code>지우기</code> 버튼)</td></tr>
+        <tr><td><code>AlarmScheduler.schedule</code> / <code>cancel</code> / <code>fire</code> / <code>restoreAll</code></td><td>예약 등록, 취소, 발동, 재부팅 뒤 복원</td></tr>
+        <tr><td><code>NotiMemoWidget.refresh(ctx)</code></td><td>모든 위젯과 목록을 다시 그림. 위젯이 없으면 아무것도 안 함</td></tr>
+        <tr><td><code>QuickInputActivity.pin</code></td><td>권한 확인, 서비스 시작, 내역 추가, 위젯 갱신</td></tr>
+        <tr><td><code>WidgetRows.scheduled</code> / <code>history</code></td><td>위젯 목록 줄을 JSON에서 만듦. JSON이 깨져 있으면 빈 목록</td></tr>
+        <tr><td><code>MainActivity</code> 채널 메서드</td><td><code>show</code> <code>cancel</code> <code>schedule</code> <code>cancelSchedule</code> <code>canScheduleExact</code> <code>requestExactAlarm</code> <code>vibrate</code> <code>restorePinned</code> <code>refreshWidget</code> <code>getLaunchTarget</code></td></tr>
+      </tbody>
+    </table></div>
+  </details>
+</section>
+
+<section id="worker">
+  <h2>AI 서버 (<code>worker/</code>)</h2>
+  <ul>
+    <li><code>POST /classify</code>: 본문 <code>{ "memo": "..." }</code>(4096바이트 이하, 메모는 500자 이하)를 받아 <code>{ category, priority, summary }</code>를 돌려줍니다.</li>
+    <li><code>GET /health</code>: 상태 확인</li>
+    <li>오류는 <code>{ "error": 코드 }</code> 모양입니다. <code>body_too_large</code>, <code>bad_json</code>, <code>bad_request</code>, <code>empty_memo</code>, <code>memo_too_long</code>, <code>rate_limited</code>(분당 6회), <code>quota_exceeded</code>(Workers AI 하루 무료 한도 소진), <code>ai_failed</code>, <code>bad_model_output</code>, <code>not_found</code>, <code>method_not_allowed</code>, <code>internal_error</code>가 있고, 앱은 이 코드를 보고 기본 분석으로 넘어가는 이유 문구를 고릅니다.</li>
+    <li>메모 내용은 로그에 남기지 않습니다. 앱이 보내는 것은 동의한 메모 본문과 설치마다 만든 임의의 id뿐입니다.</li>
+    <li>분류 목록(<code>CATEGORIES</code>)은 앱의 <code>memoCategories</code>와 같아야 합니다. 한쪽을 바꾸면 다른 쪽도 같이 바꿔 주세요.</li>
+  </ul>
+</section>
+
+<section id="storage">
+  <h2>데이터 저장</h2>
+  <p>데이터는 모두 안드로이드 SharedPreferences 한 곳에 있습니다. Flutter에서는 <code>shared_preferences</code>로, 네이티브에서는 <code>FlutterSharedPreferences</code> 파일의 <code>flutter.</code> 접두 키로 읽고 씁니다.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>키</th><th>내용</th><th>쓰는 쪽</th></tr></thead>
+    <tbody>
+      <tr><td><code>pinned_notes</code></td><td>고정 중인 메모 <code>[{id, memo, time}]</code></td><td>네이티브만 씀. Flutter는 읽기만</td></tr>
+      <tr><td><code>scheduled_notes</code></td><td>예약 목록 <code>[{id, memo, at}]</code></td><td>네이티브만 씀. Flutter는 읽기만</td></tr>
+      <tr><td><code>memo_list</code></td><td>알림 내역(메모, 분류, 우선순위, 요약, 예약 시각). 알림에서 고친 내용과 위젯 빠른 입력은 네이티브가 같은 항목에 반영</td><td>Flutter, 일부는 네이티브</td></tr>
+      <tr><td><code>saved_memo</code></td><td>입력창에 쓰던 글 임시 저장</td><td>Flutter</td></tr>
+      <tr><td><code>ai_consent</code>, <code>ai_device_id</code>, <code>ai_usage_date</code>, <code>ai_usage_count</code>, <code>ai_lead_minutes</code>, <code>ai_auto_classify</code></td><td>AI 동의, 설치 id, 오늘 사용 횟수, 여유 시간, 자동 분류</td><td>Flutter</td></tr>
+      <tr><td><code>theme_mode</code>, <code>vibration_on</code>, <code>tutorial_seen</code></td><td>테마, 진동, 사용 방법을 봤는지</td><td>Flutter</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li>앱이 꺼져 있어도 알림에서 지우기·수정이 되고 예약이 발동해야 해서, 고정과 예약 목록은 네이티브가 갖고 있습니다. Flutter는 읽기 전에 <code>reload()</code>로 네이티브가 바꾼 값을 가져옵니다.</li>
+    <li>메모 id는 생성 시각(마이크로초)을 문자열로 만든 값입니다. 옛 형식(글자만 저장하던 것, <code>{memo, time}</code>)은 읽을 때 변환하고, 새 필드는 기본값이 아닐 때만 기록해서 옛 버전 앱이 읽어도 깨지지 않게 했습니다.</li>
+  </ul>
+</section>
+
+<section id="convention">
+  <h2>코드 컨벤션</h2>
+  <ul>
+    <li>주석과 커밋 메시지는 한국어로 짧게 씁니다.</li>
+    <li><code>dart format</code>은 파일을 지정해서만 돌립니다. 폴더 전체에 돌리면 건드리지 않은 파일의 줄바꿈까지 바뀝니다.</li>
+    <li>파일은 CRLF(윈도우)입니다. 문자열을 코드로 치환할 때는 줄바꿈을 <code>\n</code>으로 통일해서 비교하고, 한글 문자열 안의 <code>\n</code>이 실제 줄바꿈으로 들어가지 않게 조심합니다.</li>
+    <li>멀티라인 <code>TextField</code>가 들어 있는 화면에는 <code>IntrinsicHeight</code>나 <code>SliverFillRemaining(hasScrollBody: false)</code> 안의 <code>Column</code>을 쓰지 않습니다. 높이를 잘못 재서 아래쪽이 잘립니다.</li>
+    <li>프레임을 그리는 중(persistent frame callback)에 <code>setState</code>를 하면 다음 프레임이 예약되지 않으므로 <code>addPostFrameCallback</code>을 씁니다.</li>
+    <li>기능을 바꿀 때 <code>flutter test</code>도 같이 고칩니다. 알림, 알람, 위젯 같은 네이티브 동작은 자동 테스트가 어려워서 실기기로 확인합니다.</li>
+  </ul>
+</section>
+
+<section id="permissions">
+  <h2>권한</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>권한</th><th>용도</th></tr></thead>
+    <tbody>
+      <tr><td><code>POST_NOTIFICATIONS</code></td><td>알림 게시(안드로이드 13 이상)</td></tr>
+      <tr><td><code>FOREGROUND_SERVICE</code>, <code>FOREGROUND_SERVICE_MEDIA_PLAYBACK</code></td><td>고정 알림을 서비스로 유지해서 시스템이 정리하지 못하게 함</td></tr>
+      <tr><td><code>SCHEDULE_EXACT_ALARM</code></td><td>예약 시각에 맞춰 고정. 없으면 몇 분 늦을 수 있음</td></tr>
+      <tr><td><code>RECEIVE_BOOT_COMPLETED</code></td><td>재부팅이나 앱 업데이트 뒤 예약 알람 복원</td></tr>
+      <tr><td><code>VIBRATE</code></td><td>고정, 예약 때 진동</td></tr>
+      <tr><td><code>INTERNET</code></td><td>AI 자동 정리, 업데이트 확인</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li>사진은 시스템 카메라/갤러리 선택 화면으로 가져오기 때문에 카메라 권한은 따로 요청하지 않습니다.</li>
+    <li>AI 서버로 보내는 것은 동의한 사용자의 메모 본문과 설치마다 만든 임의의 id뿐입니다. 동의하지 않았거나 "자동 분류"를 끄면 서버로 보내지 않습니다.</li>
+  </ul>
+</section>
+
+<section id="license">
+  <h2>라이선스</h2>
+  <p><a href="https://github.com/Mino7406/NotiMemo/blob/master/LICENSE">MIT</a>입니다. 앱에 들어 있는 Caveat 폰트는 <a href="https://github.com/Mino7406/NotiMemo/blob/master/assets/OFL-Caveat.txt">SIL Open Font License</a>를 따릅니다.</p>
+</section>
+
+<footer>made by Mino7406, VVYUNS</footer>
+
+</main>
+
+<a class="to-top" id="toTop" href="#top" aria-label="맨 위로">↑</a>
+
+<script>
+// 좁은 화면에서 표를 카드로 보일 때 각 칸에 열 제목을 붙인다
+document.querySelectorAll('table').forEach(function (t) {
+  var heads = Array.prototype.map.call(t.querySelectorAll('thead th'), function (th) { return th.textContent; });
+  t.querySelectorAll('tbody tr').forEach(function (tr) {
+    Array.prototype.forEach.call(tr.children, function (td, i) { td.setAttribute('data-label', heads[i] || ''); });
+  });
+});
+
+// 목차 패널
+var panel = document.getElementById('tocPanel');
+var btn = document.getElementById('menuBtn');
+function setPanel(open) { panel.classList.toggle('open', open); btn.setAttribute('aria-expanded', open); }
+btn.addEventListener('click', function () { setPanel(!panel.classList.contains('open')); });
+panel.addEventListener('click', function (e) { if (e.target === panel || e.target.tagName === 'A') setPanel(false); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setPanel(false); });
+
+// 맨 위로 버튼
+var toTop = document.getElementById('toTop');
+addEventListener('scroll', function () { toTop.classList.toggle('show', scrollY > 600); }, { passive: true });
+</script>
+</body>
+</html>
